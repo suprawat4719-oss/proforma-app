@@ -103,12 +103,14 @@ select.fc{cursor:pointer}
 
 /* Timeline */
 .timeline{display:flex;align-items:stretch;overflow-x:auto;background:#fff;border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:16px;padding:2px 0}
-.ty{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;font-size:13px;color:var(--gray);flex-shrink:0}
+.ty{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;font-size:13px;color:var(--gray);flex-shrink:0;position:relative}
 .ty.active{border-bottom-color:var(--blue);color:var(--blue);font-weight:700}
 .ty:hover:not(.active){background:#F8FAFC}
 .ty-st{font-size:10px;padding:1px 6px;border-radius:10px}
 .ty-st.draft{background:var(--amber-lt);color:#92400E}
 .ty-st.final{background:var(--green-lt);color:#166534}
+.ty-del{position:absolute;top:3px;right:3px;width:15px;height:15px;border-radius:50%;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:9px;display:none;align-items:center;justify-content:center;padding:0;line-height:1;font-weight:700}
+.ty:hover .ty-del{display:flex}
 .ty-add{display:flex;align-items:center;padding:8px 12px}
 
 /* Editor */
@@ -857,6 +859,7 @@ function renderEditor(){
     timelineHtml+=`<div class="ty ${active}" onclick="selectYear('${yr}')">
       <span>${yr}</span>
       <span class="ty-st ${st}">${st==='final'?'Final':'Draft'}</span>
+      <button class="ty-del" onclick="event.stopPropagation();confirmClearYear('${S.currentCo}','${yr}')" title="ล้างข้อมูล / ลบปีนี้">✕</button>
     </div>`;
   });
 
@@ -1875,6 +1878,56 @@ function goHome(){
 }
 function selectYear(yr){
   S.currentYear=yr;S.editorTab='base';
+  render();
+}
+function confirmClearYear(cId,yr){
+  showModal(`
+    <div style="text-align:center;padding:8px 0">
+      <div style="font-size:32px;margin-bottom:12px">🗑️</div>
+      <div style="font-size:17px;font-weight:700;color:var(--navy);margin-bottom:6px">จัดการข้อมูลปี ${yr}</div>
+      <div style="font-size:13px;color:var(--gray);margin-bottom:24px">เลือกสิ่งที่ต้องการทำกับข้อมูลปีนี้</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button class="btn btn-amber" style="width:100%;padding:12px;font-size:14px"
+          onclick="clearYearData('${cId}','${yr}')">
+          🔄 ล้างข้อมูลทั้งหมด — เก็บปีไว้ (นำเข้าใหม่จาก AI)
+        </button>
+        <button class="btn btn-danger" style="width:100%;padding:12px;font-size:14px"
+          onclick="deleteYearFull('${cId}','${yr}')">
+          ✕ ลบปีนี้ออกทั้งหมด
+        </button>
+        <button class="btn btn-secondary" style="width:100%" onclick="closeModal()">ยกเลิก</button>
+      </div>
+    </div>`);
+}
+function clearYearData(cId,yr){
+  const yd=getYearData(cId,yr)||{};
+  const fresh={
+    status:'draft',
+    base:defaultBase(),
+    draft:defaultDraft(),
+    settings:defaultSettings(),
+    cf:defaultCF(),
+    notes:defaultNotes(),
+    fullData:defaultFullData(),
+    scenarios:[],
+    updatedAt:Date.now()
+  };
+  saveYearLocal(cId,yr,fresh);
+  fbSaveYear(cId,yr,fresh);
+  closeModal();
+  if(S.currentYear===yr)S.editorTab='base';
+  toast(`ล้างข้อมูลปี ${yr} แล้ว — พร้อมนำเข้าใหม่`,'ok');
+  render();
+}
+function deleteYearFull(cId,yr){
+  deleteYearLocal(cId,yr);
+  fbDeleteYear(cId,yr);
+  closeModal();
+  // If deleted the currently-viewed year, select the nearest remaining year
+  const remaining=getAllYears(cId);
+  S.currentYear=remaining.length>0?remaining[remaining.length-1]:null;
+  S.editorTab='base';
+  toast(`ลบปี ${yr} แล้ว`,'ok');
   render();
 }
 function switchTab(tab){
