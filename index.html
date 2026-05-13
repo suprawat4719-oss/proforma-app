@@ -266,8 +266,8 @@ select.fc{cursor:pointer}
 
 <script>
 'use strict';
-const BUILD_TIME = '2026-05-13T20:30:00';
-const BUILD_LABEL = 'v4.1-sellingExp+clearYear';
+const BUILD_TIME = '2026-05-13 15:13 (ไทย)';
+const BUILD_LABEL = 'v4.2-accountingParser';
 
 // ===== CONFIG =====
 const FB_CFG = {
@@ -295,6 +295,32 @@ let S = {
 // ===== HELPERS =====
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function n(v){return v||0}
+
+// Thai accounting: "(6,040,349.12)" → -6040349.12  |  "1,234.56" → 1234.56  |  "-" → 0
+function parseAccountingNumber(v){
+  if(v===null||v===undefined)return 0;
+  const s=String(v).trim();
+  if(s===''||s==='-'||s==='—'||s==='–'||s==='N/A')return 0;
+  // parentheses denote negative
+  const neg=/^\(.*\)$/.test(s);
+  const clean=s.replace(/^\(/,'').replace(/\)$/,'').replace(/,/g,'').trim();
+  const num=parseFloat(clean);
+  if(isNaN(num))return 0;
+  return neg?-num:num;
+}
+
+// Self-test (runs once at startup, silent on pass)
+(function selfTestPAN(){
+  const t=(input,expected)=>{
+    const got=parseAccountingNumber(input);
+    if(Math.abs(got-expected)>0.001)console.error(`parseAccountingNumber("${input}") expected ${expected} got ${got}`);
+  };
+  t('(6,040,349.12)',-6040349.12);
+  t('(220,798.28)',-220798.28);
+  t('1,641,946.27',1641946.27);
+  t('-',0); t('',0); t('—',0); t(null,0);
+  t('123.45',123.45); t('(0)',0);
+})();
 
 function fmt(v){
   if(v===null||v===undefined||v===''||v===0)return '-';
@@ -2527,12 +2553,12 @@ function autoMatch(parsed){
   const yd=getYearData(S.currentCo,S.currentYear);
   if(!yd)return;
   if(!yd.base)yd.base=defaultBase();
-  const fields=['rev','otherRev','cogs','admin','depExp','interestExp','tax','netIncome',
+  const fields=['rev','otherRev','cogs','sellingExp','admin','depExp','interestExp','tax','netIncome',
     'cash','ar','loanAr','inventory','oca','deposit','ppe','intangible',
     'ap','shortLoan','longLoan','taxPay','ocl','longLoanNC','directorLoan','capital','reBegin'];
   fields.forEach(f=>{
     if(parsed[f]!==undefined){
-      yd.base[f]=parseFloat(parsed[f])||0;
+      yd.base[f]=parseAccountingNumber(parsed[f]);
       const el=document.getElementById(`b-${f}`);
       if(el)el.value=yd.base[f];
     }
@@ -3007,18 +3033,34 @@ function applyFullImport(parsed){
   // Apply base
   if(parsed.base){
     if(!yd.base)yd.base=defaultBase();
-    Object.keys(parsed.base).forEach(k=>{if(parsed.base[k]!==undefined)yd.base[k]=parseFloat(parsed.base[k])||0;});
+    Object.keys(parsed.base).forEach(k=>{
+      if(parsed.base[k]!==undefined)yd.base[k]=parseAccountingNumber(parsed.base[k]);
+    });
   }
   // Apply fullData
   if(!yd.fullData)yd.fullData=defaultFullData();
   if(parsed.fullData){
     const fd=parsed.fullData;
     if(fd.bsDetail)Object.keys(fd.bsDetail).forEach(k=>{
-      if(k==='ppeDetail'&&Array.isArray(fd.bsDetail.ppeDetail))yd.fullData.bsDetail.ppeDetail=fd.bsDetail.ppeDetail.filter(r=>r.name||r.cost);
-      else if(fd.bsDetail[k]!==undefined)yd.fullData.bsDetail[k]=typeof fd.bsDetail[k]==='number'?fd.bsDetail[k]:fd.bsDetail[k];
+      if(k==='ppeDetail'&&Array.isArray(fd.bsDetail.ppeDetail)){
+        yd.fullData.bsDetail.ppeDetail=fd.bsDetail.ppeDetail.filter(r=>r.name||r.cost).map(r=>({
+          name:r.name||'',
+          cost:parseAccountingNumber(r.cost),
+          accDep:parseAccountingNumber(r.accDep),
+          depRate:parseAccountingNumber(r.depRate),
+          depYear:parseAccountingNumber(r.depYear)
+        }));
+      }else if(fd.bsDetail[k]!==undefined){
+        yd.fullData.bsDetail[k]=parseAccountingNumber(fd.bsDetail[k]);
+      }
     });
-    if(fd.plDetail)Object.keys(fd.plDetail).forEach(k=>{if(fd.plDetail[k]!==undefined)yd.fullData.plDetail[k]=parseFloat(fd.plDetail[k])||0;});
-    if(fd.equityChanges)Object.keys(fd.equityChanges).forEach(k=>{if(fd.equityChanges[k]!==undefined)yd.fullData.equityChanges[k]=parseFloat(fd.equityChanges[k])||0;});
+    if(fd.plDetail)Object.keys(fd.plDetail).forEach(k=>{
+      if(fd.plDetail[k]!==undefined)
+        yd.fullData.plDetail[k]=k==='approvalNote'?String(fd.plDetail[k]||''):parseAccountingNumber(fd.plDetail[k]);
+    });
+    if(fd.equityChanges)Object.keys(fd.equityChanges).forEach(k=>{
+      if(fd.equityChanges[k]!==undefined)yd.fullData.equityChanges[k]=parseAccountingNumber(fd.equityChanges[k]);
+    });
     if(fd.notesText)Object.assign(yd.fullData.notesText,fd.notesText);
   }
   yd.fullData.importedAt=Date.now();
@@ -3036,27 +3078,40 @@ function showImportValidationModal(parsed,yd){
   const base=Object.assign(defaultBase(),yd.base||{});
   const bRes=computeBase(base);
   const pBase=parsed.base||{};
-  const fmt2=v=>(v||0).toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const fmt2=v=>{const a=Math.abs(v||0);const s=a.toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:0});return(v||0)<0?`(${s})`:s;};
   const diff=v=>Math.abs(v)<1?'<span style="color:var(--green)">✓</span>':`<span style="color:var(--amber)">⚠ ${fmt2(v)}</span>`;
+  const calcNetIncome=b=>n(b.netIncome)||(n(b.rev)+n(b.otherRev)-n(b.cogs)-n(b.sellingExp)-n(b.admin)-n(b.depExp)-n(b.interestExp)-n(b.tax));
   const rows=[
-    {label:'รายได้รวม',pdf:n(pBase.rev),app:bRes.pl.totalRev},
-    {label:'กำไรสุทธิ',pdf:n(pBase.netIncome)||(n(pBase.rev)-n(pBase.cogs)-n(pBase.admin)-n(pBase.depExp)-n(pBase.interestExp)-n(pBase.tax)),app:bRes.pl.netIncome},
+    {label:'รายได้รวม',pdf:n(pBase.rev)+n(pBase.otherRev),app:bRes.pl.totalRev},
+    {label:'กำไรสุทธิ',pdf:calcNetIncome(pBase),app:bRes.pl.netIncome},
     {label:'รวมสินทรัพย์',pdf:n(pBase.cash)+n(pBase.ar)+n(pBase.loanAr)+n(pBase.inventory)+n(pBase.oca)+n(pBase.deposit)+n(pBase.ppe)+n(pBase.intangible),app:bRes.bs.totalAssets},
     {label:'เงินสด',pdf:n(pBase.cash),app:n(base.cash)},
-    {label:'ส่วนผู้ถือหุ้น',pdf:n(pBase.capital)+(n(pBase.reBegin)+(n(pBase.netIncome)||(n(pBase.rev)-n(pBase.cogs)-n(pBase.admin)-n(pBase.depExp)-n(pBase.interestExp)-n(pBase.tax)))),app:bRes.bs.totalEquity},
+    {label:'กำไรสะสม (reBegin)',pdf:n(pBase.reBegin),app:n(base.reBegin)},
+    {label:'ส่วนผู้ถือหุ้นรวม',pdf:n(pBase.capital)+n(pBase.reBegin)+calcNetIncome(pBase),app:bRes.bs.totalEquity},
   ];
   const rowsHtml=rows.map(r=>{
     const d=r.app-r.pdf;
     return `<tr>
       <td style="padding:7px 10px">${r.label}</td>
-      <td style="padding:7px 10px;text-align:right">${fmt2(r.pdf)}</td>
-      <td style="padding:7px 10px;text-align:right">${fmt2(r.app)}</td>
+      <td style="padding:7px 10px;text-align:right;font-family:monospace">${fmt2(r.pdf)}</td>
+      <td style="padding:7px 10px;text-align:right;font-family:monospace">${fmt2(r.app)}</td>
       <td style="padding:7px 10px;text-align:right">${diff(d)}</td>
     </tr>`;
   }).join('');
+
+  // Retained earnings sign warning
+  const warnings=[];
+  if(n(base.reBegin)>0&&bRes.bs.totalEquity<n(base.capital)){
+    warnings.push('⚠ กำไรสะสม (reBegin) เป็นค่าบวก แต่ส่วนผู้ถือหุ้นรวมต่ำกว่าทุน — อาจต้องเป็นค่าติดลบ (วงเล็บในงบ)');
+  }
+  if(n(base.reBegin)>0&&bRes.bs.totalEquity<0){
+    warnings.push('⚠ ส่วนผู้ถือหุ้นติดลบ — ตรวจสอบกำไรสะสมและทุนจดทะเบียน');
+  }
+  const warnHtml=warnings.length?`<div style="margin-top:12px;padding:10px 12px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;font-size:12px;color:#92400E">${warnings.join('<br>')}</div>`:'';
+
   showModal(`
   <div class="mh"><div class="mt">ตรวจสอบการนำเข้า</div><button class="mc" onclick="closeModal()">×</button></div>
-  <p style="font-size:12px;color:var(--gray);margin-bottom:12px">เปรียบเทียบตัวเลขจาก PDF vs ข้อมูลในแอป</p>
+  <p style="font-size:12px;color:var(--gray);margin-bottom:12px">เปรียบเทียบตัวเลขจาก PDF vs ข้อมูลในแอป · วงเล็บ = ค่าติดลบ</p>
   <table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="background:#F1F5F9">
       <th style="padding:7px 10px;text-align:left">รายการ</th>
@@ -3066,6 +3121,7 @@ function showImportValidationModal(parsed,yd){
     </tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>
+  ${warnHtml}
   <div class="mf"><button class="btn btn-primary" onclick="closeModal()">ตกลง</button></div>`);
 }
 
