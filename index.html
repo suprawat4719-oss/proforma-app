@@ -141,6 +141,13 @@ select.fc{cursor:pointer}
 .cv.neg{color:var(--red)}
 .diff-ok{color:var(--green);font-weight:700}
 .diff-err{color:var(--red);font-weight:700}
+.bs-miss{background:#FEF2F2 !important;border-left:3px solid #DC2626 !important;animation:bsMissPulse 2s ease-in-out infinite}
+.bs-miss td{color:#991B1B !important}
+.bs-miss input.ni{border-color:#DC2626 !important;background:#FFF5F5 !important;color:#991B1B !important}
+.bs-miss input.ni::placeholder{color:#FCA5A5}
+.num-warn{color:#DC2626 !important;font-weight:700 !important}
+@keyframes bsMissPulse{0%,100%{background:#FEF2F2 !important}50%{background:#FFE4E6 !important}}
+.diff-err{color:var(--red);font-weight:700}
 .pct-ch{font-size:10px;color:var(--gray);margin-left:4px}
 .pct-up{color:var(--green)}.pct-dn{color:var(--red)}
 
@@ -266,8 +273,8 @@ select.fc{cursor:pointer}
 
 <script>
 'use strict';
-const BUILD_TIME = '2026-05-13 19:30 (ไทย)';
-const BUILD_LABEL = 'v4.7-adminLines';
+const BUILD_TIME = '2026-05-13 23:55 (ไทย)';
+const BUILD_LABEL = 'v4.8-balanceHighlight';
 
 // ===== CONFIG =====
 const FB_CFG = {
@@ -1177,46 +1184,54 @@ function renderDraftTab(yd){
 
   <!-- Balance Sheet -->
   <div class="card" style="overflow-x:auto;margin-bottom:16px;padding:0">
-    <div style="padding:14px 16px 4px;font-size:13px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">งบฐานะการเงิน</div>
+    <div style="padding:14px 16px 8px;font-size:13px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      งบฐานะการเงิน
+      ${Math.abs(bs.diff)>=1?`<span style="font-size:11px;font-weight:600;background:#FEE2E2;color:#991B1B;padding:2px 10px;border-radius:20px">⚠ ไม่ดุล ${fmtNum(bs.diff)} บาท — ดูแถวสีแดงด้านล่าง</span>`:'<span style="font-size:11px;font-weight:600;background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px">✓ ดุล</span>'}
+    </div>
+    ${Math.abs(bs.diff)>=1?`
+    <div style="background:#FFF7ED;border-bottom:1px solid #FED7AA;padding:8px 14px;font-size:11px;color:#92400E">
+      💡 <b>วิธีแก้:</b> รายการที่กรอกเป็น 0 แต่ควรมีค่า จะ<span style="background:#FEE2E2;padding:0 4px;border-radius:3px;font-weight:600">ไฮไลท์สีแดง</span> — กรอกให้ครบจนงบดุล &nbsp;|&nbsp;
+      สินทรัพย์รวม <b>${fmtNum(bs.totalAssets)}</b> &nbsp;vs&nbsp; หนี้สิน+ทุนรวม <b>${fmtNum(bs.totalLiabEq)}</b> &nbsp;ต่าง <b style="color:#DC2626">${fmtNum(bs.diff)}</b>
+    </div>`:''}
     <table class="ft"><thead><tr>
       <th style="width:42%">รายการ</th><th style="width:29%">ร่างปรับใหม่</th><th style="width:29%">ปีฐาน</th>
     </tr></thead><tbody>
       <tr class="sh"><td colspan="3">สินทรัพย์หมุนเวียน</td></tr>
-      <tr class="ind"><td>เงินสด ${cashAuto?'<span style="font-size:10px;color:var(--blue)">[Auto]</span>':''}</td>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&!cashAuto&&n(d.cash)===0&&n(base.cash)>0?'bs-miss':''}"><td>เงินสด ${cashAuto?'<span style="font-size:10px;color:var(--blue)">[Auto]</span>':''}</td>
         <td class="num-r">${cashAuto?cv('cv-cash',bs.cash):inp('cash')}</td><td class="num-r">${bv(base.cash)}</td></tr>
-      <tr class="ind"><td>ลูกหนี้การค้า</td><td class="num-r">${inp('ar')}</td><td class="num-r">${bv(base.ar)}</td></tr>
-      <tr class="ind"><td>ลูกหนี้เงินกู้</td><td class="num-r">${inp('loanAr')}</td><td class="num-r">${bv(base.loanAr)}</td></tr>
-      <tr class="ind"><td>สินค้าคงเหลือ</td><td class="num-r">${inp('inventory')}</td><td class="num-r">${bv(base.inventory)}</td></tr>
-      <tr class="ind"><td>สินทรัพย์หมุนเวียนอื่น</td><td class="num-r">${inp('oca')}</td><td class="num-r">${bv(base.oca)}</td></tr>
-      <tr class="ind"><td>เงินมัดจำ/เงินประกัน</td><td class="num-r">${inp('deposit')}</td><td class="num-r">${bv(base.deposit)}</td></tr>
-      <tr class="tr-sub"><td>รวมสินทรัพย์หมุนเวียน</td><td class="num-r">${cv('cv-curAssets',bs.currentAssets)}</td><td class="num-r">${bv(baseRes.bs.currentAssets)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.ar)===0&&n(base.ar)>0?'bs-miss':''}"><td>ลูกหนี้การค้า</td><td class="num-r">${inp('ar')}</td><td class="num-r">${bv(base.ar)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.loanAr)===0&&n(base.loanAr)>0?'bs-miss':''}"><td>ลูกหนี้เงินกู้</td><td class="num-r">${inp('loanAr')}</td><td class="num-r">${bv(base.loanAr)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.inventory)===0&&n(base.inventory)>0?'bs-miss':''}"><td>สินค้าคงเหลือ</td><td class="num-r">${inp('inventory')}</td><td class="num-r">${bv(base.inventory)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.oca)===0&&n(base.oca)>0?'bs-miss':''}"><td>สินทรัพย์หมุนเวียนอื่น</td><td class="num-r">${inp('oca')}</td><td class="num-r">${bv(base.oca)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.deposit)===0&&n(base.deposit)>0?'bs-miss':''}"><td>เงินมัดจำ/เงินประกัน</td><td class="num-r">${inp('deposit')}</td><td class="num-r">${bv(base.deposit)}</td></tr>
+      <tr class="tr-sub"><td>รวมสินทรัพย์หมุนเวียน</td><td class="num-r ${Math.abs(bs.diff)>=1&&bs.currentAssets===0?'num-warn':''}">${cv('cv-curAssets',bs.currentAssets)}</td><td class="num-r">${bv(baseRes.bs.currentAssets)}</td></tr>
       <tr class="sh"><td colspan="3">สินทรัพย์ไม่หมุนเวียน</td></tr>
-      <tr class="ind"><td>ที่ดิน อาคาร อุปกรณ์ — สุทธิ</td><td class="num-r">${inp('ppe')}</td><td class="num-r">${bv(base.ppe)}</td></tr>
-      <tr class="ind"><td>สินทรัพย์ไม่มีตัวตน</td><td class="num-r">${inp('intangible')}</td><td class="num-r">${bv(base.intangible)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.ppe)===0&&n(base.ppe)>0?'bs-miss':''}"><td>ที่ดิน อาคาร อุปกรณ์ — สุทธิ</td><td class="num-r">${inp('ppe')}</td><td class="num-r">${bv(base.ppe)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.intangible)===0&&n(base.intangible)>0?'bs-miss':''}"><td>สินทรัพย์ไม่มีตัวตน</td><td class="num-r">${inp('intangible')}</td><td class="num-r">${bv(base.intangible)}</td></tr>
       <tr class="tr-sub"><td>รวมสินทรัพย์ไม่หมุนเวียน</td><td class="num-r">${cv('cv-ncAssets',bs.nonCurrentAssets)}</td><td class="num-r">${bv(baseRes.bs.nonCurrentAssets)}</td></tr>
       <tr class="tr-total"><td>รวมสินทรัพย์</td><td class="num-r">${cv('cv-totAssets',bs.totalAssets)}</td><td class="num-r">${bv(baseRes.bs.totalAssets)}</td></tr>
       <tr class="sh"><td colspan="3">หนี้สินหมุนเวียน</td></tr>
-      <tr class="ind"><td>เจ้าหนี้การค้า</td><td class="num-r">${inp('ap')}</td><td class="num-r">${bv(base.ap)}</td></tr>
-      <tr class="ind"><td>เงินกู้ระยะสั้น</td><td class="num-r">${inp('shortLoan')}</td><td class="num-r">${bv(base.shortLoan)}</td></tr>
-      <tr class="ind"><td>เงินกู้ระยะยาว — ส่วนถึงกำหนด 1 ปี</td><td class="num-r">${inp('longLoan')}</td><td class="num-r">${bv(base.longLoan)}</td></tr>
-      <tr class="ind"><td>ภาษีค้างจ่าย</td><td class="num-r">${inp('taxPay')}</td><td class="num-r">${bv(base.taxPay)}</td></tr>
-      <tr class="ind"><td>หนี้สินหมุนเวียนอื่น</td><td class="num-r">${inp('ocl')}</td><td class="num-r">${bv(base.ocl)}</td></tr>
-      <tr class="tr-sub"><td>รวมหนี้สินหมุนเวียน</td><td class="num-r">${cv('cv-curLiab',bs.currentLiab)}</td><td class="num-r">${bv(baseRes.bs.currentLiab)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.ap)===0&&n(base.ap)>0?'bs-miss':''}"><td>เจ้าหนี้การค้า</td><td class="num-r">${inp('ap')}</td><td class="num-r">${bv(base.ap)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.shortLoan)===0&&n(base.shortLoan)>0?'bs-miss':''}"><td>เงินกู้ระยะสั้น</td><td class="num-r">${inp('shortLoan')}</td><td class="num-r">${bv(base.shortLoan)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.longLoan)===0&&n(base.longLoan)>0?'bs-miss':''}"><td>เงินกู้ระยะยาว — ส่วนถึงกำหนด 1 ปี</td><td class="num-r">${inp('longLoan')}</td><td class="num-r">${bv(base.longLoan)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.taxPay)===0&&n(base.taxPay)>0?'bs-miss':''}"><td>ภาษีค้างจ่าย</td><td class="num-r">${inp('taxPay')}</td><td class="num-r">${bv(base.taxPay)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.ocl)===0&&n(base.ocl)>0?'bs-miss':''}"><td>หนี้สินหมุนเวียนอื่น</td><td class="num-r">${inp('ocl')}</td><td class="num-r">${bv(base.ocl)}</td></tr>
+      <tr class="tr-sub"><td>รวมหนี้สินหมุนเวียน</td><td class="num-r ${Math.abs(bs.diff)>=1&&bs.currentLiab===0?'num-warn':''}">${cv('cv-curLiab',bs.currentLiab)}</td><td class="num-r">${bv(baseRes.bs.currentLiab)}</td></tr>
       <tr class="sh"><td colspan="3">หนี้สินไม่หมุนเวียน</td></tr>
-      <tr class="ind"><td>เงินกู้ระยะยาว — ส่วนไม่หมุนเวียน</td><td class="num-r">${inp('longLoanNC')}</td><td class="num-r">${bv(base.longLoanNC)}</td></tr>
-      <tr class="ind"><td>เงินกู้กรรมการ/ผู้ถือหุ้น</td><td class="num-r">${inp('directorLoan')}</td><td class="num-r">${bv(base.directorLoan)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.longLoanNC)===0&&n(base.longLoanNC)>0?'bs-miss':''}"><td>เงินกู้ระยะยาว — ส่วนไม่หมุนเวียน</td><td class="num-r">${inp('longLoanNC')}</td><td class="num-r">${bv(base.longLoanNC)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.directorLoan)===0&&n(base.directorLoan)>0?'bs-miss':''}"><td>เงินกู้กรรมการ/ผู้ถือหุ้น</td><td class="num-r">${inp('directorLoan')}</td><td class="num-r">${bv(base.directorLoan)}</td></tr>
       <tr class="tr-sub"><td>รวมหนี้สินไม่หมุนเวียน</td><td class="num-r">${cv('cv-ncLiab',bs.nonCurrentLiab)}</td><td class="num-r">${bv(baseRes.bs.nonCurrentLiab)}</td></tr>
       <tr class="tr-sub"><td>รวมหนี้สิน</td><td class="num-r">${cv('cv-totLiab',bs.totalLiab)}</td><td class="num-r">${bv(baseRes.bs.totalLiab)}</td></tr>
       <tr class="sh"><td colspan="3">ส่วนของผู้ถือหุ้น</td></tr>
-      <tr class="ind"><td>ทุนชำระแล้ว</td><td class="num-r">${inp('capital')}</td><td class="num-r">${bv(base.capital)}</td></tr>
-      <tr class="ind"><td>กำไรสะสมต้นปี</td><td class="num-r">${inp('reBegin')}</td><td class="num-r">${bv(base.reBegin)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.capital)===0?'bs-miss':''}"><td>ทุนชำระแล้ว</td><td class="num-r">${inp('capital')}</td><td class="num-r">${bv(base.capital)}</td></tr>
+      <tr class="ind ${Math.abs(bs.diff)>=1&&n(d.reBegin)===0&&n(base.reBegin)!==0?'bs-miss':''}"><td>กำไรสะสมต้นปี</td><td class="num-r">${inp('reBegin')}</td><td class="num-r">${bv(base.reBegin)}</td></tr>
       <tr class="ind"><td>กำไรสุทธิปีนี้ <span style="font-size:10px;color:var(--blue)">[คำนวณ]</span></td>
         <td class="num-r">${cv('cv-netIncome2',pl.netIncome,true)}</td><td class="num-r">${bv(baseRes.pl.netIncome)}</td></tr>
       <tr class="tr-sub"><td>กำไรสะสมปลายปี</td><td class="num-r">${cv('cv-reEnd',bs.reEnd)}</td><td class="num-r">${bv(baseRes.bs.reEnd)}</td></tr>
-      <tr class="tr-sub"><td>รวมส่วนของผู้ถือหุ้น</td><td class="num-r">${cv('cv-totEquity',bs.totalEquity)}</td><td class="num-r">${bv(baseRes.bs.totalEquity)}</td></tr>
+      <tr class="tr-sub"><td>รวมส่วนของผู้ถือหุ้น</td><td class="num-r ${Math.abs(bs.diff)>=1&&bs.totalEquity===0?'num-warn':''}">${cv('cv-totEquity',bs.totalEquity)}</td><td class="num-r">${bv(baseRes.bs.totalEquity)}</td></tr>
       <tr class="tr-total"><td>รวมหนี้สินและส่วนของผู้ถือหุ้น</td><td class="num-r">${cv('cv-totLiabEq',bs.totalLiabEq)}</td><td class="num-r">${bv(baseRes.bs.totalLiabEq)}</td></tr>
-      <tr>
-        <td colspan="2" style="font-size:12px;font-weight:600;color:var(--gray)">ตรวจดุล (สินทรัพย์ − หนี้สิน+ทุน)</td>
+      <tr style="${Math.abs(bs.diff)>=1?'background:#FEF2F2;':''}">
+        <td colspan="2" style="font-size:12px;font-weight:600;color:${Math.abs(bs.diff)>=1?'#991B1B':'var(--gray)'}">ตรวจดุล (สินทรัพย์ − หนี้สิน+ทุน)</td>
         <td class="num-r" id="cv-diff">${diffHtml}</td>
       </tr>
     </tbody></table>
@@ -2179,6 +2194,9 @@ function updateCalcCells(yd){
   if(mode==='target-rev'){const el=document.getElementById('di-rev');if(el)el.value=d.rev.toFixed(2);}
   else if(mode==='target-cogs'){const el=document.getElementById('di-cogs');if(el)el.value=d.cogs.toFixed(2);}
   if(settings.cashAutoBalance){const el=document.getElementById('cv-cash');if(el)el.textContent=fmt(bs.cash);}
+  // Update row highlight dynamically
+  const base4hl=Object.assign(defaultBase(),(getYearData(S.currentCo,S.currentYear)||{}).base||{});
+  updateBSHighlight(bs,draft,base4hl);
 
   // P&L
   setCV('cv-totalRev',pl.totalRev);
@@ -2221,6 +2239,63 @@ function updateCalcCells(yd){
   setKPI('cv-kpi-ic',kpi.interestCoverage!==null?kpi.interestCoverage.toFixed(1):'-',' เท่า',kpi.interestCoverage===null?'':kpi.interestCoverage>=3?'pos':kpi.interestCoverage>=1.5?'warn':'neg');
 }
 
+function updateBSHighlight(bs,draft,base){
+  const diff=Math.abs(bs.diff||0);
+  const isUnbal=diff>=1;
+  // fields: [draftField, baseField, cssId-prefix, condition]
+  const fields=[
+    ['cash',null,!isUnbal||n(draft.cash)!==0||n(base.cash)===0],
+    ['ar',null,!isUnbal||n(draft.ar)!==0||n(base.ar)===0],
+    ['loanAr',null,!isUnbal||n(draft.loanAr)!==0||n(base.loanAr)===0],
+    ['inventory',null,!isUnbal||n(draft.inventory)!==0||n(base.inventory)===0],
+    ['oca',null,!isUnbal||n(draft.oca)!==0||n(base.oca)===0],
+    ['deposit',null,!isUnbal||n(draft.deposit)!==0||n(base.deposit)===0],
+    ['ppe',null,!isUnbal||n(draft.ppe)!==0||n(base.ppe)===0],
+    ['intangible',null,!isUnbal||n(draft.intangible)!==0||n(base.intangible)===0],
+    ['ap',null,!isUnbal||n(draft.ap)!==0||n(base.ap)===0],
+    ['shortLoan',null,!isUnbal||n(draft.shortLoan)!==0||n(base.shortLoan)===0],
+    ['longLoan',null,!isUnbal||n(draft.longLoan)!==0||n(base.longLoan)===0],
+    ['taxPay',null,!isUnbal||n(draft.taxPay)!==0||n(base.taxPay)===0],
+    ['ocl',null,!isUnbal||n(draft.ocl)!==0||n(base.ocl)===0],
+    ['longLoanNC',null,!isUnbal||n(draft.longLoanNC)!==0||n(base.longLoanNC)===0],
+    ['directorLoan',null,!isUnbal||n(draft.directorLoan)!==0||n(base.directorLoan)===0],
+    ['capital',null,!isUnbal||n(draft.capital)!==0],
+    ['reBegin',null,!isUnbal||n(draft.reBegin)!==0||n(base.reBegin)===0],
+  ];
+  fields.forEach(([field,,ok])=>{
+    const el=document.getElementById('di-'+field);
+    if(!el)return;
+    const row=el.closest('tr');
+    if(!row)return;
+    if(!ok){row.classList.add('bs-miss');}
+    else{row.classList.remove('bs-miss');}
+  });
+  // Update banner
+  const bsCard=document.querySelector('[id="cv-diff"]')?.closest('.card');
+  if(bsCard){
+    let banner=bsCard.querySelector('.bs-unbal-banner');
+    if(isUnbal){
+      if(!banner){
+        banner=document.createElement('div');
+        banner.className='bs-unbal-banner';
+        banner.style.cssText='background:#FFF7ED;border-bottom:1px solid #FED7AA;padding:8px 14px;font-size:11px;color:#92400E';
+        bsCard.querySelector('table')?.before(banner);
+      }
+      banner.innerHTML=`💡 <b>สินทรัพย์</b> ${fmt(bs.totalAssets)} &nbsp;vs&nbsp; <b>หนี้สิน+ทุน</b> ${fmt(bs.totalLiabEq)} &nbsp;ต่าง <b style="color:#DC2626">${fmt(bs.diff)}</b> — แถวสีแดง = ยังไม่ได้กรอก`;
+      const titleDiv=bsCard.querySelector('div:first-child');
+      if(titleDiv){
+        let chip=titleDiv.querySelector('.bs-status-chip');
+        if(!chip){chip=document.createElement('span');chip.className='bs-status-chip';titleDiv.appendChild(chip);}
+        chip.style.cssText='font-size:11px;font-weight:600;background:#FEE2E2;color:#991B1B;padding:2px 10px;border-radius:20px;margin-left:8px';
+        chip.textContent='⚠ ไม่ดุล '+fmtNum(bs.diff)+' บาท';
+      }
+    }else{
+      if(banner)banner.remove();
+      const chip=bsCard.querySelector('.bs-status-chip');
+      if(chip){chip.style.cssText='font-size:11px;font-weight:600;background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px;margin-left:8px';chip.textContent='✓ ดุล';}
+    }
+  }
+}
 function autoSaveDraft(){
   const yd=getYearData(S.currentCo,S.currentYear);
   if(!yd)return;
