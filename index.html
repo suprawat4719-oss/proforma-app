@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -266,8 +266,8 @@ select.fc{cursor:pointer}
 
 <script>
 'use strict';
-const BUILD_TIME = '2026-05-13 15:50 (ไทย)';
-const BUILD_LABEL = 'v4.3-bsAutoBalance';
+const BUILD_TIME = '2026-05-13 17:00 (ไทย)';
+const BUILD_LABEL = 'v4.6-fullExpenseDetail';
 
 // ===== CONFIG =====
 const FB_CFG = {
@@ -490,10 +490,15 @@ function defaultFullData(){
       adminSalaries:0,adminDep:0,adminUtilities:0,
       adminRent:0,adminProfFees:0,adminTransport:0,adminOther:0,
       adminInsurance:0,adminRepairs:0,adminAdvertising:0,adminBadDebt:0,
+      adminPostage:0,adminSupplies:0,adminInternet:0,adminOfficeExp:0,
+      adminStationery:0,adminWelfare:0,adminSocialSec:0,adminProvidentFund:0,
+      adminWorkersComp:0,adminDonation:0,adminFood:0,adminBankFee:0,
+      adminFineExp:0,adminVehicle:0,adminOtherFee:0,adminTaxNA:0,
       sellingExpenses:0,financeIncome:0,
       interestIncome:0,gainOnDisposal:0,dividendIncome:0,
-      taxAccountingProfit:0,taxAddBack:0,taxDeduct:0,
+      taxAccountingProfit:0,taxAddBack:0,taxDeduct:0,taxLossCarryforward:0,
       taxableIncome:0,taxRate:20,currentTax:0,deferredTax:0,
+      taxWHTPaid:0,taxPrepaid:0,taxPayable:0,
       approvalNote:''
     },
     equityChanges:{
@@ -1035,8 +1040,17 @@ function renderBaseTab(yd){
   </div>
 
   <div id="base-bs-check" style="margin:8px 0 16px;padding:10px 14px;border-radius:8px;font-size:12px;${bsOk?'background:var(--green-lt);color:#166534':'background:var(--red-lt);color:#991B1B'}">
-    ${buildBsCheckHtml(r,b,bsOk,diff)}
-  </div>  <div style="display:flex;gap:8px;justify-content:flex-end">
+    รวมสินทรัพย์: <b>${fmtNum(r.bs.totalAssets)}</b> &nbsp;|&nbsp;
+    รวมหนี้สิน+ทุน: <b>${fmtNum(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp;
+    ส่วนต่าง: <b>${fmtNum(diff)}</b>
+    ${bsOk?' ✓ ดุล':' \u26a0 ไม่ดุล'}
+    ${!bsOk?`<div style="margin-top:6px;font-size:11px;opacity:.85">
+      📊 กำไรสะสมปลายปี = ต้นปี <b>${fmtNum(n(b.reBegin))}</b> + กำไรสุทธิ <b>${fmtNum(r.pl.netIncome)}</b> = <b>${fmtNum(r.bs.reEnd)}</b><br>
+      💡 ตรวจสอบ: กำไรสะสมต้นปี ควรเป็นยอดสะสมจากปีก่อน ไม่ใช่ยอดปลายปีนี้<br>
+      หนี้สินรวม <b>${fmtNum(r.bs.totalLiab)}</b> + ส่วนของผู้ถือหุ้น <b>${fmtNum(r.bs.totalEquity)}</b> = <b>${fmtNum(r.bs.totalLiabEq)}</b>
+    </div>`:''}
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
     <button class="btn btn-primary" onclick="saveBase()">💾 บันทึกปีฐาน</button>
     <button class="btn btn-secondary" onclick="switchTab('draft')">→ ไปร่างปรับใหม่</button>
   </div>`;
@@ -1510,32 +1524,82 @@ function renderFullStatementTab(yd){
     </table></div>`
     :`<div style="text-align:center;padding:10px;color:var(--gray);font-size:12px">ยังไม่มีข้อมูล PPE — นำเข้าจาก PDF หรือกรอกในแท็บ D</div>`;
 
-  // -- Tax computation table --
+  // -- Tax computation table (full per Thai notes) --
   const pd=fd.plDetail;
+  const taxableBase=n(pd.taxAccountingProfit)||bRes.pl.pbt;
+  const taxableAfterAddback=taxableBase+n(pd.taxAddBack)-n(pd.taxDeduct);
+  const taxableAfterLoss=taxableAfterAddback-n(pd.taxLossCarryforward);
+  const taxableIncomeFinal=n(pd.taxableIncome)||taxableAfterLoss;
+  const totalTax=(n(pd.currentTax)||bRes.pl.tax)+n(pd.deferredTax);
+  const taxPayableFinal=totalTax-n(pd.taxWHTPaid)-n(pd.taxPrepaid);
   const taxHtml=`
+    <div style="overflow-x:auto">
     <table class="det-tbl"><tbody>
-      <tr><td>กำไรทางบัญชีก่อนภาษี</td><td>${fmt(pd.taxAccountingProfit||bRes.pl.pbt)}</td></tr>
-      <tr><td style="padding-left:20px">บวก: รายการที่บวกกลับ</td><td>${fmt(pd.taxAddBack)}</td></tr>
-      <tr><td style="padding-left:20px">หัก: รายการที่หักออก</td><td>(${fmt(pd.taxDeduct)})</td></tr>
-      <tr class="dt-sub"><td>กำไรสุทธิทางภาษี (Taxable Income)</td><td>${fmt(pd.taxableIncome||(bRes.pl.pbt+n(pd.taxAddBack)-n(pd.taxDeduct)))}</td></tr>
-      <tr><td style="padding-left:20px">ภาษีปีปัจจุบัน (${pd.taxRate||20}%)</td><td>${fmt(pd.currentTax||bRes.pl.tax)}</td></tr>
-      <tr><td style="padding-left:20px">ภาษีเงินได้รอตัดบัญชี</td><td>${fmt(pd.deferredTax)}</td></tr>
-      <tr class="dt-sub"><td>ภาษีเงินได้นิติบุคคลรวม</td><td>${fmt((pd.currentTax||bRes.pl.tax)+n(pd.deferredTax))}</td></tr>
-    </tbody></table>`;
+      <tr><td>กำไร(ขาดทุน)สุทธิตามบัญชี</td><td style="text-align:right;font-family:Courier New">${fmt(taxableBase)}</td></tr>
+      <tr><td style="padding-left:16px">บวก รายจ่ายต้องห้าม</td><td style="text-align:right;font-family:Courier New">${fmt(n(pd.taxAddBack))}</td></tr>
+      <tr><td style="padding-left:16px">หัก รายการที่หักออก</td><td style="text-align:right;font-family:Courier New">(${fmt(n(pd.taxDeduct))})</td></tr>
+      <tr class="dt-sub"><td>กำไรก่อนหักขาดทุนสะสม</td><td style="text-align:right;font-family:Courier New">${fmt(taxableAfterAddback)}</td></tr>
+      <tr><td style="padding-left:16px">หัก ขาดทุนสะสมที่มีสิทธิ์นำมาหัก</td>
+        <td><input class="ni" type="number" step="0.01" value="${n(pd.taxLossCarryforward)}" onchange="onFDChange('plDetail','taxLossCarryforward',this.value)" style="width:130px;text-align:right"></td></tr>
+      <tr class="dt-sub"><td>กำไรก่อนคำนวณภาษี (Taxable Income)</td><td style="text-align:right;font-family:Courier New">${fmt(taxableIncomeFinal)}</td></tr>
+      <tr><td style="padding-left:16px">อัตราภาษีนิติบุคคล
+        <input class="ni" type="number" step="1" value="${pd.taxRate||20}" onchange="onFDChange('plDetail','taxRate',this.value)" style="width:50px;text-align:right"> %
+      </td><td style="text-align:right;font-family:Courier New">${fmt(n(pd.currentTax)||bRes.pl.tax)}</td></tr>
+      <tr><td style="padding-left:16px">ภาษีเงินได้รอตัดบัญชี</td><td style="text-align:right;font-family:Courier New">${fmt(n(pd.deferredTax))}</td></tr>
+      <tr class="dt-sub"><td>ภาษีเงินได้นิติบุคคลรวม</td><td style="text-align:right;font-family:Courier New">${fmt(totalTax)}</td></tr>
+      <tr><td style="padding-left:16px">หัก ภาษีเงินได้ถูกหัก ณ ที่จ่าย</td>
+        <td><input class="ni" type="number" step="0.01" value="${n(pd.taxWHTPaid)}" onchange="onFDChange('plDetail','taxWHTPaid',this.value)" style="width:130px;text-align:right"></td></tr>
+      <tr><td style="padding-left:16px">หัก ภาษีเงินได้จ่ายล่วงหน้า</td>
+        <td><input class="ni" type="number" step="0.01" value="${n(pd.taxPrepaid)}" onchange="onFDChange('plDetail','taxPrepaid',this.value)" style="width:130px;text-align:right"></td></tr>
+      <tr class="dt-sub"><td><b>ภาษีเงินได้นิติบุคคลค้างจ่าย</b></td>
+        <td style="text-align:right;font-family:Courier New;font-weight:700">${fmt(taxPayableFinal)}</td></tr>
+    </tbody></table></div>`;
 
-  // -- Admin expense breakdown --
-  const adminTotal=n(pd.adminSalaries)+n(pd.adminDep)+n(pd.adminUtilities)+n(pd.adminRent)+n(pd.adminProfFees)+n(pd.adminTransport)+n(pd.adminOther);
+  // -- Admin expense breakdown (full 24-item) --
+  function niAdmin(field){
+    return `<input class="ni" type="number" step="0.01" value="${n(pd[field])}" onchange="onFDChange('plDetail','${field}',this.value)" style="width:130px;text-align:right">`;
+  }
+  const adminRows=[
+    ['adminSalaries','เงินเดือนพนักงาน'],
+    ['adminSocialSec','ค่าประกันสังคม'],
+    ['adminWorkersComp','กองทุนเงินทดแทน'],
+    ['adminProvidentFund','กองทุนสำรองเลี้ยงชีพ'],
+    ['adminWelfare','ค่าสวัสดิการพนักงาน'],
+    ['adminUtilities','ค่าโทรศัพท์ ค่าไฟฟ้า ค่าน้ำประปา'],
+    ['adminInternet','ค่าบริการอินเตอร์เน็ต'],
+    ['adminRent','ค่าเช่าสำนักงานและโกดัง'],
+    ['adminPostage','ค่าไปรณีย์อากร'],
+    ['adminSupplies','ค่าวัสดุสิ้นเปลือง'],
+    ['adminStationery','ค่าเครื่องเขียนแบบพิมพ์'],
+    ['adminOfficeExp','ค่าใช้จ่ายในสำนักงาน'],
+    ['adminRepairs','ค่าซ่อมแซมและบำรุงรักษา'],
+    ['adminVehicle','ค่าใช้จ่ายยานพาหนะ'],
+    ['adminTransport','ค่าเดินทางและที่พัก'],
+    ['adminFood','ค่าอาหารและเครื่องดื่ม'],
+    ['adminDep','ค่าเสื่อมราคา'],
+    ['adminProfFees','ค่าตรวจสอบบัญชีและที่ปรึกษา'],
+    ['adminAdvertising','ค่าโฆษณาประชาสัมพันธ์'],
+    ['adminDonation','ค่าบริจาคการกุศล'],
+    ['adminBankFee','ค่าธรรมเนียมธนาคาร'],
+    ['adminOtherFee','ค่าธรรมเนียมอื่น'],
+    ['adminTaxNA','ค่าภาษีซื้อไม่ขอคืน'],
+    ['adminFineExp','ค่าใช้จ่ายต้องห้าม'],
+    ['adminBadDebt','หนี้สูญ/ค่าเผื่อหนี้สงสัยจะสูญ'],
+    ['adminInsurance','ค่าประกันภัย'],
+    ['adminOther','ค่าใช้จ่ายเบ็ดเตล็ด'],
+  ];
+  const adminTotal=adminRows.reduce((s,[f])=>s+n(pd[f]),0);
   const adminHtml=`
+    <div style="overflow-x:auto">
     <table class="det-tbl"><tbody>
-      <tr><td>เงินเดือนและค่าจ้าง</td><td id="fsd-adminSalaries"><input class="ni" type="number" step="0.01" value="${n(pd.adminSalaries)}" onchange="onFDChange('plDetail','adminSalaries',this.value)" style="width:120px;text-align:right"></td></tr>
-      <tr><td>ค่าเสื่อมราคา</td><td><input class="ni" type="number" step="0.01" value="${n(pd.adminDep)}" onchange="onFDChange('plDetail','adminDep',this.value)" style="width:120px;text-align:right"></td></tr>
-      <tr><td>ค่าสาธารณูปโภค</td><td><input class="ni" type="number" step="0.01" value="${n(pd.adminUtilities)}" onchange="onFDChange('plDetail','adminUtilities',this.value)" style="width:120px;text-align:right"></td></tr>
-      <tr><td>ค่าเช่า</td><td><input class="ni" type="number" step="0.01" value="${n(pd.adminRent)}" onchange="onFDChange('plDetail','adminRent',this.value)" style="width:120px;text-align:right"></td></tr>
-      <tr><td>ค่าวิชาชีพ/ที่ปรึกษา</td><td><input class="ni" type="number" step="0.01" value="${n(pd.adminProfFees)}" onchange="onFDChange('plDetail','adminProfFees',this.value)" style="width:120px;text-align:right"></td></tr>
-      <tr><td>ค่าขนส่ง</td><td><input class="ni" type="number" step="0.01" value="${n(pd.adminTransport)}" onchange="onFDChange('plDetail','adminTransport',this.value)" style="width:120px;text-align:right"></td></tr>
-      <tr><td>อื่นๆ</td><td><input class="ni" type="number" step="0.01" value="${n(pd.adminOther)}" onchange="onFDChange('plDetail','adminOther',this.value)" style="width:120px;text-align:right"></td></tr>
-      <tr class="dt-sub"><td>รวมค่าใช้จ่ายบริหาร</td><td style="text-align:right;font-family:Courier New">${fmt(adminTotal||base.admin)}</td></tr>
-    </tbody></table>`;
+      ${adminRows.map(([f,lbl])=>`<tr><td>${lbl}</td><td>${niAdmin(f)}</td></tr>`).join('')}
+      <tr class="dt-sub"><td><b>รวมค่าใช้จ่ายบริหาร</b></td>
+        <td style="text-align:right;font-family:Courier New;font-weight:700">${fmt(adminTotal||base.admin)}</td>
+      </tr>
+      ${Math.abs(adminTotal-(base.admin||0))>1&&adminTotal>0?`<tr><td colspan="2" style="font-size:10px;color:${Math.abs(adminTotal-(base.admin||0))<1?'var(--green)':'var(--amber)'}">
+        ⚠ รวม detail ${fmt(adminTotal)} vs งบ ${fmt(base.admin)} — ต่าง ${fmt(adminTotal-(base.admin||0))}
+      </td></tr>`:''}
+    </tbody></table></div>`;
 
   // -- Equity changes table --
   const eq=fd.equityChanges;
@@ -1559,12 +1623,29 @@ function renderFullStatementTab(yd){
   // -- Cash detail --
   const bd=fd.bsDetail;
   const cashTotal=n(bd.cashOnHand)+n(bd.cashAtBank)+n(bd.cashFixed);
+  const oclDetail=n(bd.whtPayable)+n(bd.outputVAT)+n(bd.vatPayable)+n(bd.accruedSalaries)+n(bd.accruedExpenses)+n(bd.advanceReceipts)+n(bd.dividendsPayable)+n(bd.provisionForEOD)+n(bd.otherAccrued);
+  function niBS(field,w){return `<input class="ni" type="number" step="0.01" value="${n(bd[field])}" onchange="onFDChange('bsDetail','${field}',this.value)" style="width:${w||140}px;text-align:right">`;}
   const cashHtml=`
     <table class="det-tbl"><tbody>
-      <tr><td>เงินสดในมือ</td><td><input class="ni" type="number" step="0.01" value="${n(bd.cashOnHand)}" onchange="onFDChange('bsDetail','cashOnHand',this.value)" style="width:140px"></td></tr>
-      <tr><td>เงินฝากธนาคาร</td><td><input class="ni" type="number" step="0.01" value="${n(bd.cashAtBank)}" onchange="onFDChange('bsDetail','cashAtBank',this.value)" style="width:140px"></td></tr>
-      <tr><td>เงินฝากประจำ</td><td><input class="ni" type="number" step="0.01" value="${n(bd.cashFixed)}" onchange="onFDChange('bsDetail','cashFixed',this.value)" style="width:140px"></td></tr>
+      <tr><td>เงินสดในมือ</td><td>${niBS('cashOnHand')}</td></tr>
+      <tr><td>เงินฝากธนาคาร</td><td>${niBS('cashAtBank')}</td></tr>
+      <tr><td>เงินฝากประจำ</td><td>${niBS('cashFixed')}</td></tr>
       <tr class="dt-sub"><td>รวมเงินสดและรายการเทียบเท่าเงินสด</td><td style="text-align:right;font-family:Courier New">${fmt(cashTotal||base.cash)}</td></tr>
+      ${Math.abs(cashTotal-n(base.cash))>1&&cashTotal>0?`<tr><td colspan="2" style="font-size:10px;color:var(--amber)">⚠ detail ${fmt(cashTotal)} vs งบ ${fmt(n(base.cash))}</td></tr>`:''}
+    </tbody></table>`;
+  const oclHtml=`
+    <table class="det-tbl"><tbody>
+      <tr><td>ค่าภาษีหัก ณ ที่จ่ายค้างจ่าย</td><td>${niBS('whtPayable')}</td></tr>
+      <tr><td>ภาษีขาย (Output VAT)</td><td>${niBS('outputVAT')}</td></tr>
+      <tr><td>ค่าภาษีมูลค่าเพิ่มค้างจ่าย</td><td>${niBS('vatPayable')}</td></tr>
+      <tr><td>เงินเดือนค้างจ่าย</td><td>${niBS('accruedSalaries')}</td></tr>
+      <tr><td>ค่าใช้จ่ายค้างจ่ายอื่น</td><td>${niBS('accruedExpenses')}</td></tr>
+      <tr><td>รายได้รับล่วงหน้า</td><td>${niBS('advanceReceipts')}</td></tr>
+      <tr><td>เงินปันผลค้างจ่าย</td><td>${niBS('dividendsPayable')}</td></tr>
+      <tr><td>ประมาณการผลประโยชน์พนักงาน</td><td>${niBS('provisionForEOD')}</td></tr>
+      <tr><td>หนี้สินหมุนเวียนอื่นๆ</td><td>${niBS('otherAccrued')}</td></tr>
+      <tr class="dt-sub"><td><b>รวมหนี้สินหมุนเวียนอื่น</b></td><td style="text-align:right;font-family:Courier New;font-weight:700">${fmt(oclDetail||base.ocl)}</td></tr>
+      ${Math.abs(oclDetail-n(base.ocl))>1&&oclDetail>0?`<tr><td colspan="2" style="font-size:10px;color:var(--amber)">⚠ detail ${fmt(oclDetail)} vs งบ ${fmt(n(base.ocl))}</td></tr>`:''}
     </tbody></table>`;
 
   // -- Target Engine HTML --
@@ -1609,13 +1690,18 @@ function renderFullStatementTab(yd){
 
   <div class="fs-2col">
     <div class="fs-section">
-      <div class="fs-section-title">หมายเหตุ 1 — เงินสด</div>
+      <div class="fs-section-title">หมายเหตุ — เงินสดและรายการเทียบเท่า</div>
       ${cashHtml}
     </div>
     <div class="fs-section">
-      <div class="fs-section-title">หมายเหตุ — ค่าใช้จ่ายบริหาร</div>
-      ${adminHtml}
+      <div class="fs-section-title">หมายเหตุ — หนี้สินหมุนเวียนอื่น</div>
+      ${oclHtml}
     </div>
+  </div>
+
+  <div class="fs-section">
+    <div class="fs-section-title">หมายเหตุ — ค่าใช้จ่ายในการบริหาร <span class="fs-badge">${adminRows.length} รายการ</span></div>
+    ${adminHtml}
   </div>
 
   <div class="fs-section">
@@ -1987,50 +2073,19 @@ function onBaseChange(field,val){
   updateBaseCalcDisplay(yd.base);
 }
 
-function buildBsCheckHtml(r,base,ok,diff){
-  const f=v=>{if(!v||v===0)return'-';const a=Math.abs(v);const s=a.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});return v<0?`(${s})`:s;};
-  const header=`รวมสินทรัพย์: <b>${f(r.bs.totalAssets)}</b> &nbsp;|&nbsp; รวมหนี้สิน+ทุน: <b>${f(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp; ส่วนต่าง: <b>${f(diff)}</b> ${ok?'✓ ดุล':'⚠ ไม่ดุล'}`;
-  if(ok)return header;
-  const otherAssets=n(base.ar)+n(base.loanAr)+n(base.inventory)+n(base.oca)+n(base.deposit)+n(base.ppe)+n(base.intangible);
-  const correctedCash=r.bs.totalLiabEq-otherAssets;
-  const reBeginWarn=n(base.reBegin)>0&&r.bs.totalEquity<n(base.capital)?'<br>⚠ กำไรสะสมอาจต้องเป็นค่าติดลบ (ตัวเลขในวงเล็บจากงบจริง)':'';
-  return`${header}
-    <div style="margin-top:8px;font-size:11px;line-height:1.8">
-      <b>สินทรัพย์:</b> เงินสด ${f(n(base.cash))} | AR ${f(n(base.ar))} | สินค้า ${f(n(base.inventory))} | PPE ${f(n(base.ppe))} | อื่น ${f(n(base.oca)+n(base.loanAr)+n(base.deposit)+n(base.intangible))}<br>
-      <b>หนี้สิน:</b> ${f(r.bs.totalLiab)} &nbsp;&nbsp; <b>ส่วนผู้ถือหุ้น:</b> ทุน ${f(n(base.capital))} + กำไรสะสมปลายปี ${f(r.bs.reEnd)} = ${f(r.bs.totalEquity)}<br>
-      <b>เงินสดที่ถูกต้อง</b> = (L+E) ${f(r.bs.totalLiabEq)} − สินทรัพย์อื่น ${f(otherAssets)} = <b>${f(correctedCash)}</b>${reBeginWarn}
-    </div>
-    <div style="margin-top:8px">
-      <button class="btn btn-sm btn-amber" onclick="autoBalanceBaseCash()">⚖ ปรับเงินสดให้ดุล → ${f(correctedCash)}</button>
-    </div>`;
-}
-function autoBalanceBaseCash(){
-  const yd=getYearData(S.currentCo,S.currentYear);
-  if(!yd||!yd.base)return;
-  const b=Object.assign(defaultBase(),yd.base);
-  const r=computeBase(b);
-  const otherAssets=n(b.ar)+n(b.loanAr)+n(b.inventory)+n(b.oca)+n(b.deposit)+n(b.ppe)+n(b.intangible);
-  const correctedCash=r.bs.totalLiabEq-otherAssets;
-  yd.base.cash=correctedCash;
-  yd.updatedAt=Date.now();
-  saveYearLocal(S.currentCo,S.currentYear,yd);
-  const el=document.getElementById('b-cash');
-  if(el)el.value=correctedCash;
-  updateBaseCalcDisplay(yd.base);
-  toast('ปรับเงินสดเป็น '+fmtNum(correctedCash)+' แล้ว — งบดุล ✓','ok');
-}
 function updateBaseCalcDisplay(base){
   const r=computeBase(base);
   const plEl=document.getElementById('base-pl-summary');
   if(plEl){
     plEl.innerHTML=`กำไรขั้นต้น: <b style="color:var(--navy)">${fmtNum(r.pl.grossProfit)}</b> &nbsp;|&nbsp; EBIT: <b style="color:var(--navy)">${fmtNum(r.pl.ebit)}</b> &nbsp;|&nbsp; กำไรก่อนภาษี: <b style="color:var(--navy)">${fmtNum(r.pl.pbt)}</b>`;
   }
-    const bsEl=document.getElementById('base-bs-check');
+  const bsEl=document.getElementById('base-bs-check');
   const diff=r.bs.totalAssets-r.bs.totalLiabEq;
   const ok=Math.abs(diff)<1;
   if(bsEl){
     bsEl.style.cssText=`margin:8px 0 16px;padding:10px 14px;border-radius:8px;font-size:12px;${ok?'background:var(--green-lt);color:#166534':'background:var(--red-lt);color:#991B1B'}`;
-    bsEl.innerHTML=buildBsCheckHtml(r,base,ok,diff);
+    bsEl.innerHTML=`รวมสินทรัพย์: <b>${fmtNum(r.bs.totalAssets)}</b> &nbsp;|&nbsp; รวมหนี้สิน+ทุน: <b>${fmtNum(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp; ส่วนต่าง: <b>${fmtNum(diff)}</b>${ok?' ✓ ดุล':' \u26a0 ไม่ดุล'}`
+      +(ok?'':` <div style="margin-top:6px;font-size:11px;opacity:.85">📊 กำไรสะสมปลายปี = ต้นปี <b>${fmtNum(n(base.reBegin))}</b> + กำไรสุทธิ <b>${fmtNum(r.pl.netIncome)}</b> = <b>${fmtNum(r.bs.reEnd)}</b><br>หนี้สินรวม <b>${fmtNum(r.bs.totalLiab)}</b> + ทุน+กำไรสะสม <b>${fmtNum(r.bs.totalEquity)}</b> = <b>${fmtNum(r.bs.totalLiabEq)}</b><br>💡 ตรวจสอบว่า reBegin = กำไรสะสมต้นปี (ปีก่อน) ไม่ใช่ยอดปลายปีนี้</div>`);
   }
 }
 
@@ -2519,10 +2574,21 @@ async function runAIImport(){
   const useFile=tabFile&&tabFile.style.display!=='none';
 
   const prompt=`คุณเป็นนักบัญชีผู้เชี่ยวชาญ TFRS for NPAEs
-วิเคราะห์งบการเงินนี้และสกัดตัวเลขทั้งหมด (หน่วยบาท ไม่ต้องใส่ comma)
-ตอบเฉพาะ JSON object เท่านั้น ไม่มีข้อความอื่น:
-{"rev":0,"otherRev":0,"cogs":0,"sellingExp":0,"admin":0,"depExp":0,"interestExp":0,"tax":0,"netIncome":0,"cash":0,"ar":0,"loanAr":0,"inventory":0,"oca":0,"deposit":0,"ppe":0,"intangible":0,"ap":0,"shortLoan":0,"longLoan":0,"taxPay":0,"ocl":0,"longLoanNC":0,"directorLoan":0,"capital":0,"reBegin":0}
-หมายเหตุ: rev=รายได้หลัก, otherRev=รายได้อื่น, cogs=ต้นทุนขาย, sellingExp=ค่าใช้จ่ายในการขาย(Selling expenses), admin=ค่าใช้จ่ายบริหาร, depExp=ค่าเสื่อมราคา, interestExp=ดอกเบี้ยจ่าย, tax=ภาษีนิติบุคคล, netIncome=กำไรสุทธิ, cash=เงินสด, ar=ลูกหนี้การค้า, loanAr=ลูกหนี้เงินกู้, inventory=สินค้าคงเหลือ, oca=สินทรัพย์หมุนเวียนอื่น, deposit=เงินมัดจำ, ppe=ที่ดินอาคารอุปกรณ์สุทธิ, intangible=สินทรัพย์ไม่มีตัวตน, ap=เจ้าหนี้การค้า, shortLoan=เงินกู้ระยะสั้น, longLoan=เงินกู้ยาวส่วนหมุนเวียน, taxPay=ภาษีค้างจ่าย, ocl=หนี้สินหมุนเวียนอื่น, longLoanNC=เงินกู้ยาวไม่หมุนเวียน, directorLoan=เงินกู้กรรมการ, capital=ทุนชำระแล้ว, reBegin=กำไรสะสมต้นปี`;
+สกัดตัวเลขจากงบการเงินนี้ ตอบเฉพาะ JSON เท่านั้น ห้ามมีข้อความอื่น
+
+กฎสำคัญ:
+- ตัวเลขในวงเล็บ เช่น (6,040,349.12) = ติดลบ → ใส่เป็น -6040349.12
+- reBegin = กำไร(ขาดทุน)สะสม ณ ต้นปี (ยอดเปิด = ยอดปิดปีก่อน) ถ้าขาดทุนสะสม = ค่าลบ
+- longLoanNC = เงินกู้ยืมระยะยาว ส่วนที่เกิน 1 ปี (ไม่ใช่ส่วนกรรมการ เว้นแต่ระบุชัด)
+- directorLoan = เงินกู้กรรมการ/ผู้ถือหุ้น (ถ้าไม่มีให้ใส่ 0)
+- taxPay = ภาษีเงินได้นิติบุคคลค้างจ่าย (CIT payable เท่านั้น)
+- ocl = หนี้สินหมุนเวียนอื่นรวม เช่น ภาษีหัก ณ ที่จ่ายค้างจ่าย+ภาษีขาย+VAT รวมกัน
+- ap = เจ้าหนี้การค้าและเจ้าหนี้อื่น รวมกัน
+- capital = ทุนที่ออกและเรียกชำระแล้ว
+- netIncome = กำไรสุทธิปีปัจจุบัน (ถ้าขาดทุน = ค่าลบ)
+- ตัวเลขทุกตัวไม่ต้องใส่ comma หน่วย: บาท
+
+{"rev":0,"otherRev":0,"cogs":0,"sellingExp":0,"admin":0,"depExp":0,"interestExp":0,"tax":0,"netIncome":0,"cash":0,"ar":0,"loanAr":0,"inventory":0,"oca":0,"deposit":0,"ppe":0,"intangible":0,"ap":0,"shortLoan":0,"longLoan":0,"taxPay":0,"ocl":0,"longLoanNC":0,"directorLoan":0,"capital":0,"reBegin":0}`;
 
   let msgContent;
   if(useFile&&_aiFileData){
@@ -2561,7 +2627,7 @@ async function runAIImport(){
         'anthropic-dangerous-direct-browser-access':'true'
       },
       body:JSON.stringify({
-        model:'claude-haiku-4-5',
+        model:'claude-sonnet-4-6',
         max_tokens:1000,
         messages:[{role:'user',content:msgContent}]
       })
@@ -2593,7 +2659,10 @@ function autoMatch(parsed){
     if(parsed[f]!==undefined){
       yd.base[f]=parseAccountingNumber(parsed[f]);
       const el=document.getElementById(`b-${f}`);
-      if(el)el.value=yd.base[f];
+      if(el){
+        const v=yd.base[f];
+        el.value=(v===0)?'':(v<0?`(${Math.abs(v).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})})`:v.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}));
+      }
     }
   });
   yd.updatedAt=Date.now();
@@ -2994,13 +3063,16 @@ async function runFullAIImport(){
       "dividendsPayable":0,"provisionForEOD":0
     },
     "plDetail":{
-      "adminSalaries":0,"adminDep":0,"adminUtilities":0,"adminRent":0,
-      "adminProfFees":0,"adminTransport":0,"adminOther":0,
-      "adminInsurance":0,"adminRepairs":0,"adminAdvertising":0,"adminBadDebt":0,
-      "sellingExpenses":0,"financeIncome":0,
-      "interestIncome":0,"gainOnDisposal":0,
-      "taxAccountingProfit":0,"taxAddBack":0,"taxDeduct":0,
+      "adminSalaries":0,"adminSocialSec":0,"adminWorkersComp":0,"adminProvidentFund":0,"adminWelfare":0,
+      "adminUtilities":0,"adminInternet":0,"adminRent":0,"adminPostage":0,"adminSupplies":0,
+      "adminStationery":0,"adminOfficeExp":0,"adminRepairs":0,"adminVehicle":0,"adminTransport":0,
+      "adminFood":0,"adminDep":0,"adminProfFees":0,"adminAdvertising":0,"adminDonation":0,
+      "adminBankFee":0,"adminOtherFee":0,"adminTaxNA":0,"adminFineExp":0,"adminBadDebt":0,
+      "adminInsurance":0,"adminOther":0,
+      "sellingExpenses":0,"financeIncome":0,"interestIncome":0,"gainOnDisposal":0,
+      "taxAccountingProfit":0,"taxAddBack":0,"taxDeduct":0,"taxLossCarryforward":0,
       "taxableIncome":0,"taxRate":20,"currentTax":0,"deferredTax":0,
+      "taxWHTPaid":0,"taxPrepaid":0,"taxPayable":0,
       "approvalNote":""
     },
     "equityChanges":{
@@ -3012,11 +3084,18 @@ async function runFullAIImport(){
   }
 }
 
-คำแนะนำ:
+คำแนะนำสำคัญ:
+- ตัวเลขในวงเล็บ เช่น (5,819,550.84) = ติดลบ → ใส่เป็น -5819550.84
+- base.reBegin = กำไร(ขาดทุน)สะสม ณ ต้นปี (ยอดเปิด) = ยอดปิดปีก่อน ถ้าขาดทุนสะสม = ค่าลบ
+- base.longLoanNC = เงินกู้ยืมระยะยาว ส่วนที่เกิน 1 ปี (ไม่ใช่กรรมการ เว้นระบุ)
+- base.directorLoan = เงินกู้กรรมการ/ผู้ถือหุ้น เฉพาะที่ระบุชัดเจน ถ้าไม่มีใส่ 0
+- base.taxPay = ภาษีเงินได้นิติบุคคลค้างจ่าย (CIT payable เท่านั้น ไม่รวม WHT หรือ VAT)
+- base.ocl = หนี้สินหมุนเวียนอื่นรวม เช่น WHT ค้างจ่าย + ภาษีขาย + VAT รวมกัน
+- base.ap = เจ้าหนี้การค้าและเจ้าหนี้อื่น รวมกัน
 - base = ตัวเลขหลักจากงบฐานะการเงินและงบกำไรขาดทุน (ปีล่าสุด)
 - bsDetail.ppeDetail = รายละเอียด PPE แต่ละรายการจากตาราง PPE ในหมายเหตุ
 - plDetail = รายละเอียดค่าใช้จ่ายบริหารและการคำนวณภาษีจากหมายเหตุ
-- equityChanges = ข้อมูลจากงบแสดงการเปลี่ยนแปลงส่วนของผู้ถือหุ้น
+- equityChanges = ข้อมูลจากงบแสดงการเปลี่ยนแปลงส่วนของผู้ถือหุ้น (openRE/closeRE = ค่าลบถ้าขาดทุนสะสม)
 - notesText.note1 = ข้อมูลทั่วไปของบริษัทจากหมายเหตุประกอบงบการเงิน
 - หากพบรายการ ภาษีหัก ณ ที่จ่ายค้างรับ ให้ใส่ใน whtReceivable
 - หากพบ ภาษีมูลค่าเพิ่มค้างรับ ให้ใส่ใน vatReceivable
@@ -3024,7 +3103,10 @@ async function runFullAIImport(){
 - หากพบ ภาษีหัก ณ ที่จ่ายค้างจ่าย ให้ใส่ใน whtPayable
 - หากพบ ภาษีมูลค่าเพิ่มค้างจ่าย ให้ใส่ใน vatPayable
 - plDetail.approvalNote = ข้อความอนุมัติงบ เช่น "กรรมการอนุมัติวันที่..."
-- adminInsurance = ค่าประกัน, adminRepairs = ค่าซ่อมบำรุง, adminAdvertising = ค่าโฆษณา, adminBadDebt = หนี้สูญ/ค่าเผื่อ
+- plDetail fields รายละเอียดค่าใช้จ่ายบริหาร: adminSalaries=เงินเดือน, adminSocialSec=ประกันสังคม, adminWorkersComp=กองทุนเงินทดแทน, adminProvidentFund=กองทุนสำรอง, adminWelfare=สวัสดิการ, adminUtilities=ค่าโทรศัพท์/ไฟ/น้ำ, adminInternet=อินเตอร์เน็ต, adminRent=ค่าเช่า, adminPostage=ไปรณีย์อากร, adminSupplies=วัสดุสิ้นเปลือง, adminStationery=เครื่องเขียน, adminOfficeExp=ค่าใช้จ่ายสำนักงาน, adminRepairs=ซ่อมแซม, adminVehicle=ยานพาหนะ, adminTransport=เดินทาง/ที่พัก, adminFood=อาหาร/เครื่องดื่ม, adminDep=ค่าเสื่อมราคา, adminProfFees=ตรวจสอบบัญชี/ที่ปรึกษา, adminAdvertising=โฆษณา, adminDonation=บริจาค, adminBankFee=ธรรมเนียมธนาคาร, adminOtherFee=ธรรมเนียมอื่น, adminTaxNA=ภาษีซื้อไม่ขอคืน, adminFineExp=รายจ่ายต้องห้าม, adminBadDebt=หนี้สูญ, adminInsurance=ประกันภัย, adminOther=เบ็ดเตล็ด
+- plDetail.taxLossCarryforward = ขาดทุนสะสมที่มีสิทธิ์นำมาหักตามกฎหมาย (ตัวเลขบวก)
+- plDetail.taxWHTPaid = ภาษีเงินได้ถูกหัก ณ ที่จ่าย, taxPrepaid = จ่ายล่วงหน้า, taxPayable = ค้างจ่ายสุทธิ
+- bsDetail.whtPayable = ภาษีหัก ณ ที่จ่ายค้างจ่าย, outputVAT = ภาษีขายค้างจ่าย, vatPayable = VAT ค้างจ่าย
 - base.sellingExp = ค่าใช้จ่ายในการขาย (Selling expenses) ถ้าพบในงบกำไรขาดทุน
 - plDetail.sellingExpenses = ค่าใช้จ่ายในการขายรวม (ถ้ามีรายละเอียดแยกต่างหาก)`;
 
