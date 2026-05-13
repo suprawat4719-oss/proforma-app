@@ -266,8 +266,8 @@ select.fc{cursor:pointer}
 
 <script>
 'use strict';
-const BUILD_TIME = '2026-05-13 17:00 (ไทย)';
-const BUILD_LABEL = 'v4.6-fullExpenseDetail';
+const BUILD_TIME = '2026-05-13 19:30 (ไทย)';
+const BUILD_LABEL = 'v4.7-adminLines';
 
 // ===== CONFIG =====
 const FB_CFG = {
@@ -499,7 +499,8 @@ function defaultFullData(){
       taxAccountingProfit:0,taxAddBack:0,taxDeduct:0,taxLossCarryforward:0,
       taxableIncome:0,taxRate:20,currentTax:0,deferredTax:0,
       taxWHTPaid:0,taxPrepaid:0,taxPayable:0,
-      approvalNote:''
+      approvalNote:'',
+      adminLines:[]
     },
     equityChanges:{
       openCapital:0,openRE:0,openTotal:0,
@@ -1555,10 +1556,12 @@ function renderFullStatementTab(yd){
         <td style="text-align:right;font-family:Courier New;font-weight:700">${fmt(taxPayableFinal)}</td></tr>
     </tbody></table></div>`;
 
-  // -- Admin expense breakdown (full 24-item) --
+  // -- Admin expense breakdown --
   function niAdmin(field){
     return `<input class="ni" type="number" step="0.01" value="${n(pd[field])}" onchange="onFDChange('plDetail','${field}',this.value)" style="width:130px;text-align:right">`;
   }
+  const adminLinesData=pd.adminLines||[];
+  const adminLinesTotal=adminLinesData.reduce((s,r)=>s+n(r.amount),0);
   const adminRows=[
     ['adminSalaries','เงินเดือนพนักงาน'],
     ['adminSocialSec','ค่าประกันสังคม'],
@@ -1588,18 +1591,33 @@ function renderFullStatementTab(yd){
     ['adminInsurance','ค่าประกันภัย'],
     ['adminOther','ค่าใช้จ่ายเบ็ดเตล็ด'],
   ];
-  const adminTotal=adminRows.reduce((s,[f])=>s+n(pd[f]),0);
-  const adminHtml=`
+  const adminFixedTotal=adminRows.reduce((s,[f])=>s+n(pd[f]),0);
+  const adminTotal=adminLinesTotal>0?adminLinesTotal:adminFixedTotal;
+  const adminWarnHtml=Math.abs(adminTotal-(base.admin||0))>1&&adminTotal>0
+    ?`<tr><td colspan="2" style="font-size:11px;color:var(--red);padding:4px 8px">⚠ รวม detail ${fmt(adminTotal)} vs งบ ${fmt(base.admin||0)} — ต่าง ${fmt(adminTotal-(base.admin||0))}</td></tr>` :'';
+  const adminLinesHtml=adminLinesData.length>0?`
+    <div style="overflow-x:auto">
+    <table class="det-tbl"><tbody>
+      ${adminLinesData.map((r,i)=>`<tr><td style="padding-left:6px">${r.label||'รายการ '+(i+1)}</td><td style="text-align:right;font-family:Courier New;padding-right:8px">${fmt(n(r.amount))}</td></tr>`).join('')}
+      <tr class="dt-sub"><td><b>รวม (จาก PDF ${adminLinesData.length} รายการ)</b></td>
+        <td style="text-align:right;font-family:Courier New;font-weight:700">${fmt(adminLinesTotal)}</td>
+      </tr>
+      ${adminWarnHtml}
+    </tbody></table></div>
+    <div style="margin:6px 0;display:flex;gap:8px">
+      <button class="btn btn-xs btn-secondary" onclick="distAdminLines()">📊 กระจายยอดไปยัง 27 ช่อง</button>
+      <button class="btn btn-xs btn-danger" onclick="clearAdminLines()">✕ ล้างรายการ PDF</button>
+    </div>`:'';
+  const adminFixedHtml=`
     <div style="overflow-x:auto">
     <table class="det-tbl"><tbody>
       ${adminRows.map(([f,lbl])=>`<tr><td>${lbl}</td><td>${niAdmin(f)}</td></tr>`).join('')}
-      <tr class="dt-sub"><td><b>รวมค่าใช้จ่ายบริหาร</b></td>
-        <td style="text-align:right;font-family:Courier New;font-weight:700">${fmt(adminTotal||base.admin)}</td>
+      <tr class="dt-sub"><td><b>${adminLinesData.length>0?'รวม (กรอกมือ — สำรอง)':'รวมค่าใช้จ่ายบริหาร'}</b></td>
+        <td style="text-align:right;font-family:Courier New;font-weight:700">${fmt(adminFixedTotal||base.admin)}</td>
       </tr>
-      ${Math.abs(adminTotal-(base.admin||0))>1&&adminTotal>0?`<tr><td colspan="2" style="font-size:10px;color:${Math.abs(adminTotal-(base.admin||0))<1?'var(--green)':'var(--amber)'}">
-        ⚠ รวม detail ${fmt(adminTotal)} vs งบ ${fmt(base.admin)} — ต่าง ${fmt(adminTotal-(base.admin||0))}
-      </td></tr>`:''}
+      ${adminLinesData.length===0?adminWarnHtml:''}
     </tbody></table></div>`;
+  const adminHtml=`${adminLinesHtml}${adminLinesData.length>0?'<div style="margin-top:10px;font-size:11px;color:var(--gray);font-weight:600">ช่องกรอกมือ (สำรอง / mapping)</div>':''}${adminFixedHtml}`;
 
   // -- Equity changes table --
   const eq=fd.equityChanges;
@@ -1700,7 +1718,7 @@ function renderFullStatementTab(yd){
   </div>
 
   <div class="fs-section">
-    <div class="fs-section-title">หมายเหตุ — ค่าใช้จ่ายในการบริหาร <span class="fs-badge">${adminRows.length} รายการ</span></div>
+    <div class="fs-section-title">หมายเหตุ — ค่าใช้จ่ายในการบริหาร <span class="fs-badge">${adminLinesData.length>0?adminLinesData.length+' รายการ (PDF)':adminRows.length+' รายการ'}</span></div>
     ${adminHtml}
   </div>
 
@@ -2726,11 +2744,17 @@ function syncFullDataToFinancials(yd){
   const cashSum=n(bd.cashOnHand)+n(bd.cashAtBank)+n(bd.cashFixed);
   if(cashSum>0)yd.base.cash=cashSum;
 
-  // 2. Admin expense: sum of detail lines → base.admin
-  const adminSum=n(pd.adminSalaries)+n(pd.adminDep)+n(pd.adminUtilities)+
-    n(pd.adminRent)+n(pd.adminProfFees)+n(pd.adminTransport)+
-    n(pd.adminInsurance)+n(pd.adminRepairs)+n(pd.adminAdvertising)+
-    n(pd.adminBadDebt)+n(pd.adminOther);
+  // 2. Admin expense: prefer adminLines (from PDF) sum; fallback to fixed fields
+  const adminLinesArr=pd.adminLines||[];
+  const adminLinesSum=adminLinesArr.reduce((s,r)=>s+n(r.amount),0);
+  const adminFixedSum=n(pd.adminSalaries)+n(pd.adminSocialSec)+n(pd.adminWorkersComp)+
+    n(pd.adminProvidentFund)+n(pd.adminWelfare)+n(pd.adminDep)+n(pd.adminUtilities)+
+    n(pd.adminInternet)+n(pd.adminRent)+n(pd.adminPostage)+n(pd.adminSupplies)+
+    n(pd.adminStationery)+n(pd.adminOfficeExp)+n(pd.adminRepairs)+n(pd.adminVehicle)+
+    n(pd.adminTransport)+n(pd.adminFood)+n(pd.adminProfFees)+n(pd.adminAdvertising)+
+    n(pd.adminDonation)+n(pd.adminBankFee)+n(pd.adminOtherFee)+n(pd.adminTaxNA)+
+    n(pd.adminFineExp)+n(pd.adminBadDebt)+n(pd.adminInsurance)+n(pd.adminOther);
+  const adminSum=adminLinesSum>0?adminLinesSum:adminFixedSum;
   if(adminSum>0)yd.base.admin=adminSum;
 
   // 2b. Selling expenses → base.sellingExp
@@ -2800,6 +2824,74 @@ function onFDTextChange(field,val){
   yd.fullData.notesText[field]=val;
   yd.updatedAt=Date.now();
   saveYearLocal(S.currentCo,S.currentYear,yd);
+}
+function clearAdminLines(){
+  const yd=getFullData();if(!yd)return;
+  yd.fullData.plDetail.adminLines=[];
+  syncFullDataToFinancials(yd);
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderFullStatementTab(yd);
+  toast('ล้างรายการ PDF แล้ว — สามารถกรอกมือได้เลย','ok');
+}
+function distAdminLines(){
+  const yd=getFullData();if(!yd)return;
+  const pd=yd.fullData.plDetail||{};
+  const lines=pd.adminLines||[];
+  if(!lines.length){toast('ไม่มีรายการจาก PDF','err');return;}
+  // Keyword map: Thai label → fixed field
+  const map=[
+    [['เงินเดือน','ค่าจ้าง','salary','wage'],'adminSalaries'],
+    [['ประกันสังคม','social'],'adminSocialSec'],
+    [['กองทุนเงินทดแทน','worker'],'adminWorkersComp'],
+    [['กองทุนสำรอง','provident'],'adminProvidentFund'],
+    [['สวัสดิการ','welfare'],'adminWelfare'],
+    [['โทรศัพท์','ไฟฟ้า','น้ำประปา','utilities','electric','water'],'adminUtilities'],
+    [['อินเตอร์เน็ต','internet'],'adminInternet'],
+    [['ค่าเช่า','rent'],'adminRent'],
+    [['ไปรณีย์','postage','stamp'],'adminPostage'],
+    [['วัสดุสิ้นเปลือง','supplies'],'adminSupplies'],
+    [['เครื่องเขียน','stationery'],'adminStationery'],
+    [['ค่าใช้จ่ายสำนักงาน','office exp'],'adminOfficeExp'],
+    [['ซ่อมแซม','บำรุงรักษา','repair'],'adminRepairs'],
+    [['ยานพาหนะ','vehicle'],'adminVehicle'],
+    [['เดินทาง','ที่พัก','transport','travel'],'adminTransport'],
+    [['อาหาร','เครื่องดื่ม','food'],'adminFood'],
+    [['เสื่อมราคา','depreciation','dep'],'adminDep'],
+    [['ตรวจสอบบัญชี','สอบบัญชี','ที่ปรึกษา','audit','professional'],'adminProfFees'],
+    [['โฆษณา','ประชาสัมพันธ์','advertising'],'adminAdvertising'],
+    [['บริจาค','donation'],'adminDonation'],
+    [['ธรรมเนียมธนาคาร','bank fee','bank charge'],'adminBankFee'],
+    [['ธรรมเนียมอื่น','other fee'],'adminOtherFee'],
+    [['ภาษีซื้อไม่ขอคืน','vat not claim','ภาษีมูลค่าเพิ่มต้องห้าม'],'adminTaxNA'],
+    [['ต้องห้าม','fine','penalty'],'adminFineExp'],
+    [['หนี้สูญ','สงสัยจะสูญ','bad debt'],'adminBadDebt'],
+    [['ประกันภัย','insurance'],'adminInsurance'],
+  ];
+  // Reset all fixed fields first
+  map.forEach(([,f])=>{pd[f]=0;});
+  pd.adminOther=0;
+  const unmapped=[];
+  lines.forEach(line=>{
+    const lbl=(line.label||'').toLowerCase();
+    let matched=false;
+    for(const [kws,field] of map){
+      if(kws.some(k=>lbl.includes(k.toLowerCase()))){
+        pd[field]=(pd[field]||0)+n(line.amount);
+        matched=true;break;
+      }
+    }
+    if(!matched)unmapped.push(line);
+  });
+  if(unmapped.length>0){
+    pd.adminOther=(pd.adminOther||0)+unmapped.reduce((s,r)=>s+n(r.amount),0);
+  }
+  syncFullDataToFinancials(yd);
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderFullStatementTab(yd);
+  const msg=unmapped.length>0?` (${unmapped.length} รายการรวมไว้ใน "เบ็ดเตล็ด")`:'';
+  toast('กระจายยอดสำเร็จ'+msg,'ok');
 }
 function onTargetChange(field,val){
   const yd=getFullData();if(!yd)return;
@@ -3069,6 +3161,7 @@ async function runFullAIImport(){
       "adminFood":0,"adminDep":0,"adminProfFees":0,"adminAdvertising":0,"adminDonation":0,
       "adminBankFee":0,"adminOtherFee":0,"adminTaxNA":0,"adminFineExp":0,"adminBadDebt":0,
       "adminInsurance":0,"adminOther":0,
+      "adminLines":[{"label":"รายการตัวอย่าง","amount":0}],
       "sellingExpenses":0,"financeIncome":0,"interestIncome":0,"gainOnDisposal":0,
       "taxAccountingProfit":0,"taxAddBack":0,"taxDeduct":0,"taxLossCarryforward":0,
       "taxableIncome":0,"taxRate":20,"currentTax":0,"deferredTax":0,
@@ -3095,6 +3188,7 @@ async function runFullAIImport(){
 - base = ตัวเลขหลักจากงบฐานะการเงินและงบกำไรขาดทุน (ปีล่าสุด)
 - bsDetail.ppeDetail = รายละเอียด PPE แต่ละรายการจากตาราง PPE ในหมายเหตุ
 - plDetail = รายละเอียดค่าใช้จ่ายบริหารและการคำนวณภาษีจากหมายเหตุ
+- **สำคัญมาก**: plDetail.adminLines = อาเรย์รายการค่าใช้จ่ายบริหารทุกบรรทัดจากหมายเหตุ (ไม่จำกัดจำนวน) รูปแบบ: [{"label":"ชื่อรายการ","amount":ตัวเลข},...] ดึงทุกรายการที่พบในหมายเหตุประกอบงบ — หัวข้อ "ค่าใช้จ่ายในการบริหาร" หรือ "รายละเอียดค่าใช้จ่าย" — รวมถึงรายการย่อยทั้งหมด อย่าละเว้นแม้แต่รายการเดียว ถ้าตัวเลขอยู่ในวงเล็บให้ใส่เป็นค่าบวก (เพราะทุกรายการเป็นค่าใช้จ่าย)
 - equityChanges = ข้อมูลจากงบแสดงการเปลี่ยนแปลงส่วนของผู้ถือหุ้น (openRE/closeRE = ค่าลบถ้าขาดทุนสะสม)
 - notesText.note1 = ข้อมูลทั่วไปของบริษัทจากหมายเหตุประกอบงบการเงิน
 - หากพบรายการ ภาษีหัก ณ ที่จ่ายค้างรับ ให้ใส่ใน whtReceivable
@@ -3170,8 +3264,13 @@ function applyFullImport(parsed){
       }
     });
     if(fd.plDetail)Object.keys(fd.plDetail).forEach(k=>{
-      if(fd.plDetail[k]!==undefined)
+      if(k==='adminLines'&&Array.isArray(fd.plDetail.adminLines)){
+        yd.fullData.plDetail.adminLines=fd.plDetail.adminLines.filter(r=>r.label||r.amount).map(r=>({
+          label:String(r.label||''),amount:parseAccountingNumber(r.amount)
+        }));
+      }else if(fd.plDetail[k]!==undefined){
         yd.fullData.plDetail[k]=k==='approvalNote'?String(fd.plDetail[k]||''):parseAccountingNumber(fd.plDetail[k]);
+      }
     });
     if(fd.equityChanges)Object.keys(fd.equityChanges).forEach(k=>{
       if(fd.equityChanges[k]!==undefined)yd.fullData.equityChanges[k]=parseAccountingNumber(fd.equityChanges[k]);
