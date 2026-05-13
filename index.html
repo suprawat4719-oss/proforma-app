@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Forma — S.P.N. Corporate Services</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --navy:#1E3A5F;--blue:#2563EB;--blue-lt:#EFF6FF;
+  --green:#16A34A;--green-lt:#DCFCE7;
+  --red:#DC2626;--red-lt:#FEE2E2;
+  --amber:#D97706;--amber-lt:#FEF3C7;
+  --gray:#6B7280;--border:#E5E7EB;--bg:#F0F4F8;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.1);
+  --r:10px;--font:'Segoe UI',system-ui,sans-serif
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:#1F2937;font-size:14px;line-height:1.5}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:3px}
+
+/* Nav */
+.nav{background:var(--navy);padding:0 20px;height:56px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.nav-brand{flex:1}
+.nav-title{font-size:15px;font-weight:700;color:#fff;letter-spacing:.3px}
+.nav-sub{font-size:11px;color:#94A3B8}
+.dot{width:8px;height:8px;border-radius:50%;background:#EF4444;flex-shrink:0;transition:background .3s}
+.dot.on{background:#22C55E}
+.dot-lbl{font-size:11px;color:#94A3B8}
+
+/* Container */
+.wrap{max-width:1200px;margin:0 auto;padding:20px}
+
+/* Card */
+.card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);padding:20px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;white-space:nowrap}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-secondary{background:#F1F5F9;color:#334155;border:1px solid var(--border)}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:5px}
+
+/* Form */
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px}
+.fc{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);color:#1F2937;background:#fff;transition:border-color .15s}
+.fc:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+select.fc{cursor:pointer}
+
+/* Toast */
+#toast{position:fixed;top:64px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.ti{background:#1F2937;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:var(--shadow-lg);animation:tslide .2s ease;max-width:280px}
+.ti.ok{background:var(--green)}.ti.err{background:var(--red)}.ti.warn{background:var(--amber)}
+@keyframes tslide{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* Overlay / Modal */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center}
+.ov.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:24px;width:90%;max-width:560px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:mup .2s ease}
+@keyframes mup{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.mt{font-size:16px;font-weight:700;color:var(--navy)}
+.mc{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);line-height:1;padding:2px 6px;border-radius:4px}
+.mc:hover{background:#F1F5F9}
+.mf{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* Dashboard */
+.dash-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.dash-title{font-size:20px;font-weight:700;color:var(--navy)}
+.grid-co{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.co-card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);padding:18px;border:1px solid var(--border);transition:box-shadow .15s,transform .15s;cursor:default}
+.co-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.co-name{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:2px}
+.co-meta{font-size:12px;color:var(--gray);margin-bottom:12px;line-height:1.7}
+.co-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ychips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.ychip{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:var(--font);transition:opacity .15s}
+.ychip:hover{opacity:.8}
+.ychip.draft{background:var(--amber-lt);color:#92400E}
+.ychip.final{background:var(--green-lt);color:#166534}
+.ychip.none{background:#F1F5F9;color:#64748B}
+.card-acts{display:flex;gap:4px}
+
+/* Empty */
+.empty{text-align:center;padding:60px 20px;color:var(--gray)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-txt{font-size:16px;font-weight:500;margin-bottom:6px}
+.empty-sub{font-size:13px;margin-bottom:20px}
+
+/* Breadcrumb */
+.bc{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray);margin-bottom:16px;flex-wrap:wrap}
+.bc a{color:var(--blue);cursor:pointer;text-decoration:none}
+.bc a:hover{text-decoration:underline}
+.bc-sep{color:#CBD5E1}
+
+/* Timeline */
+.timeline{display:flex;align-items:stretch;overflow-x:auto;background:#fff;border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:16px;padding:2px 0}
+.ty{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;font-size:13px;color:var(--gray);flex-shrink:0}
+.ty.active{border-bottom-color:var(--blue);color:var(--blue);font-weight:700}
+.ty:hover:not(.active){background:#F8FAFC}
+.ty-st{font-size:10px;padding:1px 6px;border-radius:10px}
+.ty-st.draft{background:var(--amber-lt);color:#92400E}
+.ty-st.final{background:var(--green-lt);color:#166534}
+.ty-add{display:flex;align-items:center;padding:8px 12px}
+
+/* Editor */
+.ed-hdr{background:#fff;border-radius:var(--r);padding:16px 20px;margin-bottom:16px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.ed-co-name{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:2px}
+.ed-co-meta{font-size:12px;color:var(--gray)}
+.ed-tabs{display:flex;border-bottom:2px solid var(--border);background:#fff;border-radius:var(--r) var(--r) 0 0;padding:0 8px;margin-bottom:0;box-shadow:var(--shadow)}
+.etab{padding:12px 20px;border:none;background:none;font-size:13px;font-weight:600;color:var(--gray);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:var(--font);transition:all .15s}
+.etab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* Financial table */
+.ft{width:100%;border-collapse:collapse;font-size:13px}
+.ft th{background:var(--navy);color:#fff;padding:10px 12px;text-align:right;font-weight:600;font-size:12px}
+.ft th:first-child{text-align:left}
+.ft td{padding:7px 12px;border-bottom:1px solid #F1F5F9;vertical-align:middle}
+.ft tr:hover td{background:#FAFBFF}
+.sh td{background:#F0F4F8;font-weight:700;font-size:12px;color:var(--navy);padding:7px 12px;letter-spacing:.3px;cursor:default}
+.ft tr:hover.sh td{background:#F0F4F8}
+.tr-total td{font-weight:700;border-top:2.5px solid #CBD5E1;border-bottom:2.5px solid #CBD5E1;background:#FAFBFF}
+.tr-sub td{font-weight:600;border-top:1px solid var(--border)}
+.ind td:first-child{padding-left:24px}
+.num-r{text-align:right}
+.ni{width:100%;text-align:right;border:1px solid transparent;border-radius:4px;padding:3px 6px;font-size:13px;font-family:var(--font);background:transparent;color:inherit;-moz-appearance:textfield}
+.ni::-webkit-inner-spin-button,.ni::-webkit-outer-spin-button{-webkit-appearance:none}
+.ni:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+.ni:disabled{color:var(--blue);font-weight:600;cursor:default}
+.cv{color:var(--blue);font-weight:600;text-align:right;display:block}
+.cv.neg{color:var(--red)}
+.diff-ok{color:var(--green);font-weight:700}
+.diff-err{color:var(--red);font-weight:700}
+.pct-ch{font-size:10px;color:var(--gray);margin-left:4px}
+.pct-up{color:var(--green)}.pct-dn{color:var(--red)}
+
+/* Settings */
+.sp{background:#F8FAFC;border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;align-items:end}
+.sl{font-size:11px;font-weight:600;color:var(--gray);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.4px}
+.tog{position:relative;width:40px;height:22px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tsl{position:absolute;inset:0;background:#CBD5E1;border-radius:22px;cursor:pointer;transition:.2s}
+.tsl::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog input:checked+.tsl{background:var(--blue)}
+.tog input:checked+.tsl::before{transform:translateX(18px)}
+.tog-row{display:flex;align-items:center;gap:8px;margin-top:2px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:8px;border:1px solid var(--border);padding:12px 14px}
+.kl{font-size:11px;color:var(--gray);margin-bottom:3px;font-weight:500}
+.kv{font-size:20px;font-weight:700;color:var(--navy)}
+.kpi.pos .kv{color:var(--green)}.kpi.neg .kv{color:var(--red)}
+.kpi.warn .kv{color:var(--amber)}
+
+/* Base form */
+.bg2{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.bfield label{display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px}
+.bfield input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);text-align:right;color:#1F2937}
+.bfield input:focus{outline:none;border-color:var(--blue)}
+
+/* Sec title */
+.stit{font-size:12px;font-weight:700;color:var(--navy);margin:16px 0 10px;padding-bottom:6px;border-bottom:2px solid #CBD5E1;text-transform:uppercase;letter-spacing:.5px}
+
+/* Status badge */
+.sbadge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.sbadge.draft{background:var(--amber-lt);color:#92400E}
+.sbadge.final{background:var(--green-lt);color:#166534}
+
+/* Export bar */
+.xbar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--border);margin-top:8px}
+
+/* Bank Analysis */
+.score-ring{display:flex;flex-direction:column;align-items:center;justify-content:center;width:120px;height:120px;border-radius:50%;border:8px solid;font-family:var(--font);flex-shrink:0}
+.score-ring.green{border-color:var(--green);color:var(--green)}
+.score-ring.amber{border-color:var(--amber);color:var(--amber)}
+.score-ring.red{border-color:var(--red);color:var(--red)}
+.score-num{font-size:32px;font-weight:800;line-height:1}
+.score-lbl{font-size:11px;font-weight:600;margin-top:2px}
+.score-level{font-size:13px;font-weight:700;margin-top:4px}
+.flag-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.flag-tbl th{background:#F0F4F8;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--navy)}
+.flag-tbl td{padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.flag-ok{color:var(--green);font-weight:600}
+.flag-warn{color:var(--amber);font-weight:600}
+.flag-critical{color:var(--red);font-weight:700}
+.sc-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+.sc-name{font-weight:700;font-size:13px;color:var(--navy)}
+.sc-meta{font-size:11px;color:var(--gray);margin-top:2px}
+
+/* Notes table */
+.notes-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.notes-tbl th{background:#F0F4F8;padding:6px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)}
+.notes-tbl th.num-r{text-align:right}
+.notes-tbl td{padding:5px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.notes-tbl tr:hover td{background:#FAFBFF}
+
+/* Responsive */
+@media(max-width:640px){
+  .wrap{padding:12px}
+  .grid-co{grid-template-columns:1fr}
+  .sgrid{grid-template-columns:1fr 1fr}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-title">AI Financial Statement Builder for Bank Loan</div>
+    <div class="nav-sub">AI เครื่องมือช่วยจัดโครงสร้างงบเพื่อขอสินเชื่อ — S.P.N. Corporate Services</div>
+  </div>
+  <div class="dot" id="dot"></div>
+  <div class="dot-lbl" id="dot-lbl">ออฟไลน์</div>
+</nav>
+
+<div id="toast"></div>
+
+<div class="ov" id="ov">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div id="app"></div>
+
+<script>
+'use strict';
+const BUILD_TIME = '2026-05-13T09:00:00';
+const BUILD_LABEL = 'v3.0';
+
+// ===== CONFIG =====
+const FB_CFG = {
+  apiKey:"AIzaSyDgjfoPXa9hWIypcUKsGq7-2EP5FvGB3iM",
+  authDomain:"advance-tracker-cadf5.firebaseapp.com",
+  projectId:"advance-tracker-cadf5",
+  storageBucket:"advance-tracker-cadf5.firebasestorage.app",
+  messagingSenderId:"186461314782",
+  appId:"1:186461314782:web:552ad245c22d36a53cac4f"
+};
+const PDF_URL = 'http://localhost:5055/api/generate-pdf';
+
+// ===== STATE =====
+let db = null;
+let S = {
+  view: 'dashboard',       // 'dashboard' | 'editor'
+  companies: [],           // [{id,name,taxId,address,director,businessType}]
+  years: {},               // {companyId: {year: yearData}}
+  currentCo: null,
+  currentYear: null,
+  editorTab: 'base',       // 'base' | 'draft'
+  online: false
+};
+
+// ===== HELPERS =====
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function n(v){return v||0}
+
+function fmt(v){
+  if(v===null||v===undefined||v===''||v===0)return '-';
+  if(!isFinite(v))return '-';
+  const abs=Math.abs(v);
+  const s=abs.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return v<0?`(${s})`:s;
+}
+function fmtNum(v){return (v||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtPct(v){return isFinite(v)?v.toFixed(2)+'%':'-'}
+function fmtPctChg(draft,base){
+  if(!base||base===0)return '';
+  const pct=((draft-base)/Math.abs(base))*100;
+  const cls=pct>=0?'pct-up':'pct-dn';
+  const sign=pct>=0?'+':'';
+  return `<span class="pct-ch ${cls}">${sign}${pct.toFixed(1)}%</span>`;
+}
+
+function thaiYear(y){return y}// already stored as พ.ศ.
+
+// ===== TOAST =====
+function toast(msg,type=''){
+  const d=document.createElement('div');
+  d.className='ti'+(type?' '+type:'');
+  d.textContent=msg;
+  document.getElementById('toast').appendChild(d);
+  setTimeout(()=>d.remove(),3200);
+}
+
+// ===== MODAL =====
+function showModal(html){
+  document.getElementById('modal').innerHTML=html;
+  document.getElementById('ov').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('ov').classList.remove('open');
+  document.getElementById('modal').innerHTML='';
+}
+document.getElementById('ov').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ===== LOCALSTORAGE =====
+function lsGetCompanies(){try{return JSON.parse(localStorage.getItem('proforma_co_v1'))||[];}catch{return[];}}
+function lsSaveCompanies(){localStorage.setItem('proforma_co_v1',JSON.stringify(S.companies));}
+function lsGetYear(cId,yr){try{return JSON.parse(localStorage.getItem(`proforma_yr_v1_${cId}_${yr}`))||null;}catch{return null;}}
+function lsSaveYear(cId,yr,data){localStorage.setItem(`proforma_yr_v1_${cId}_${yr}`,JSON.stringify(data));}
+function lsGetAllYearKeys(cId){
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith(`proforma_yr_v1_${cId}_`))keys.push(k);
+  }
+  return keys;
+}
+function lsGetAllYears(cId){
+  const yrs={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(!k||!k.startsWith(`proforma_yr_v1_${cId}_`))continue;
+    const yr=k.replace(`proforma_yr_v1_${cId}_`,'');
+    try{yrs[yr]=JSON.parse(localStorage.getItem(k));}catch{}
+  }
+  return yrs;
+}
+
+// ===== DATA OPS =====
+function getCompany(cId){return S.companies.find(c=>c.id===cId);}
+function getYearData(cId,yr){
+  if(!S.years[cId])return null;
+  return S.years[cId][yr]||null;
+}
+function getAllYears(cId){
+  if(!S.years[cId])return [];
+  return Object.keys(S.years[cId]).sort((a,b)=>Number(a)-Number(b));
+}
+function getPrevYear(cId,yr){
+  const yrs=getAllYears(cId);
+  const idx=yrs.indexOf(String(yr));
+  return idx>0?yrs[idx-1]:null;
+}
+
+function saveCompanyLocal(c){
+  const idx=S.companies.findIndex(x=>x.id===c.id);
+  if(idx>=0)S.companies[idx]=c;else S.companies.push(c);
+  lsSaveCompanies();
+}
+function saveYearLocal(cId,yr,data){
+  if(!S.years[cId])S.years[cId]={};
+  S.years[cId][String(yr)]=data;
+  lsSaveYear(cId,String(yr),data);
+}
+function deleteCompanyLocal(cId){
+  S.companies=S.companies.filter(c=>c.id!==cId);
+  lsSaveCompanies();
+  // remove year entries
+  for(let i=localStorage.length-1;i>=0;i--){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith(`proforma_yr_v1_${cId}_`))localStorage.removeItem(k);
+  }
+  if(S.years[cId])delete S.years[cId];
+}
+function deleteYearLocal(cId,yr){
+  localStorage.removeItem(`proforma_yr_v1_${cId}_${yr}`);
+  if(S.years[cId])delete S.years[cId][yr];
+}
+
+// Firebase helpers
+function fbSaveCompany(c){
+  if(!db)return;
+  db.collection('proforma_companies').doc(c.id).set(c).catch(()=>{});
+}
+function fbSaveYear(cId,yr,data){
+  if(!db)return;
+  db.collection('proforma_years').doc(`${cId}_${yr}`).set({...data,cId,yr:String(yr)}).catch(()=>{});
+}
+function fbDeleteCompany(cId){
+  if(!db)return;
+  db.collection('proforma_companies').doc(cId).delete().catch(()=>{});
+}
+function fbDeleteYear(cId,yr){
+  if(!db)return;
+  db.collection('proforma_years').doc(`${cId}_${yr}`).delete().catch(()=>{});
+}
+
+// ===== CALCULATIONS =====
+function defaultSettings(){
+  return{taxMode:'auto',taxRate:0.20,targetTax:0,cashAutoBalance:true};
+}
+function defaultDraft(){
+  return{rev:0,otherRev:0,cogs:0,admin:0,depExp:0,interestExp:0,
+    cash:0,ar:0,loanAr:0,inventory:0,oca:0,deposit:0,ppe:0,intangible:0,
+    ap:0,shortLoan:0,longLoan:0,taxPay:0,ocl:0,longLoanNC:0,directorLoan:0,
+    capital:0,reBegin:0};
+}
+function defaultBase(){
+  return{rev:0,otherRev:0,cogs:0,admin:0,depExp:0,interestExp:0,tax:0,netIncome:0,
+    cash:0,ar:0,loanAr:0,inventory:0,oca:0,deposit:0,ppe:0,intangible:0,
+    ap:0,shortLoan:0,longLoan:0,taxPay:0,ocl:0,longLoanNC:0,directorLoan:0,
+    capital:0,reBegin:0};
+}
+function defaultCF(){
+  return{depreciation:0,dividends:0,interestPaid:0,loanProceeds:0,loanRepayment:0};
+}
+function defaultNotes(){
+  return{
+    accountingPolicies:{revenueRecognition:'',inventoryMethod:'FIFO',ppeDepMethod:'SL',taxPolicy:''},
+    ppeSchedule:[],
+    relatedParties:[],
+    contingencies:'',subsequentEvents:'',auditorNote:''
+  };
+}
+
+function compute(draft,settings){
+  const s=Object.assign(defaultSettings(),settings);
+  let d=Object.assign({},draft);
+  const taxRate=s.taxRate||0.20;
+  const targetTax=s.targetTax||0;
+  const mode=s.taxMode||'auto';
+
+  if(mode==='target-rev'){
+    d.rev=(targetTax/taxRate)+n(d.cogs)+n(d.admin)+n(d.depExp)+n(d.interestExp)-n(d.otherRev);
+  }else if(mode==='target-cogs'){
+    d.cogs=n(d.rev)+n(d.otherRev)-n(d.admin)-n(d.depExp)-n(d.interestExp)-(targetTax/taxRate);
+  }
+
+  const totalRev=n(d.rev)+n(d.otherRev);
+  const grossProfit=totalRev-n(d.cogs);
+  const ebitda=grossProfit-n(d.admin);
+  const ebit=ebitda-n(d.depExp);
+  const pbt=ebit-n(d.interestExp);
+  const tax=mode==='auto'?Math.max(0,pbt*taxRate):targetTax;
+  const netIncome=pbt-tax;
+
+  const reEnd=n(d.reBegin)+netIncome;
+  const totalEquity=n(d.capital)+reEnd;
+  const currentLiab=n(d.ap)+n(d.shortLoan)+n(d.longLoan)+n(d.taxPay)+n(d.ocl);
+  const nonCurrentLiab=n(d.longLoanNC)+n(d.directorLoan);
+  const totalLiab=currentLiab+nonCurrentLiab;
+  const totalLiabEq=totalLiab+totalEquity;
+  let cash=n(d.cash);
+  if(s.cashAutoBalance){
+    cash=totalLiabEq-n(d.ar)-n(d.loanAr)-n(d.inventory)-n(d.oca)-n(d.deposit)-n(d.ppe)-n(d.intangible);
+  }
+  const currentAssets=cash+n(d.ar)+n(d.loanAr)+n(d.inventory)+n(d.oca)+n(d.deposit);
+  const nonCurrentAssets=n(d.ppe)+n(d.intangible);
+  const totalAssets=currentAssets+nonCurrentAssets;
+  const diff=totalAssets-totalLiabEq;
+
+  const grossMargin=totalRev!==0?grossProfit/totalRev*100:0;
+  const ebitMargin=totalRev!==0?ebit/totalRev*100:0;
+  const netMargin=totalRev!==0?netIncome/totalRev*100:0;
+  const de=totalEquity!==0?totalLiab/totalEquity:0;
+  const debtRatio=totalAssets!==0?totalLiab/totalAssets:0;
+  const currentRatio=currentLiab!==0?currentAssets/currentLiab:0;
+  const interestCoverage=n(d.interestExp)!==0?ebit/n(d.interestExp):null;
+
+  return{
+    d,
+    pl:{totalRev,grossProfit,ebitda,ebit,pbt,tax,netIncome},
+    bs:{cash,reEnd,totalEquity,currentLiab,nonCurrentLiab,totalLiab,totalLiabEq,currentAssets,nonCurrentAssets,totalAssets,diff},
+    kpi:{grossMargin,ebitMargin,netMargin,de,debtRatio,currentRatio,interestCoverage}
+  };
+}
+
+function computeBase(base){
+  const b=Object.assign(defaultBase(),base);
+  const totalRev=n(b.rev)+n(b.otherRev);
+  const grossProfit=totalRev-n(b.cogs);
+  const ebitda=grossProfit-n(b.admin);
+  const ebit=ebitda-n(b.depExp);
+  const pbt=ebit-n(b.interestExp);
+  const tax=n(b.tax);
+  const netIncome=b.netIncome!==undefined&&b.netIncome!==0?n(b.netIncome):(pbt-tax);
+  const reEnd=n(b.reBegin)+netIncome;
+  const totalEquity=n(b.capital)+reEnd;
+  const currentLiab=n(b.ap)+n(b.shortLoan)+n(b.longLoan)+n(b.taxPay)+n(b.ocl);
+  const nonCurrentLiab=n(b.longLoanNC)+n(b.directorLoan);
+  const totalLiab=currentLiab+nonCurrentLiab;
+  const totalLiabEq=totalLiab+totalEquity;
+  const currentAssets=n(b.cash)+n(b.ar)+n(b.loanAr)+n(b.inventory)+n(b.oca)+n(b.deposit);
+  const nonCurrentAssets=n(b.ppe)+n(b.intangible);
+  const totalAssets=currentAssets+nonCurrentAssets;
+  return{
+    pl:{totalRev,grossProfit,ebitda,ebit,pbt,tax,netIncome},
+    bs:{cash:n(b.cash),reEnd,totalEquity,currentLiab,nonCurrentLiab,totalLiab,totalLiabEq,currentAssets,nonCurrentAssets,totalAssets}
+  };
+}
+
+function computeCF(base,draft,settings,cf,res){
+  const b=Object.assign(defaultBase(),base);
+  const d=res.d;
+  const bs=res.bs;
+  const pl=res.pl;
+  const c=Object.assign(defaultCF(),cf);
+  const dep=n(c.depreciation);
+  const interestPaid=n(c.interestPaid);
+  const loanProceeds=n(c.loanProceeds);
+  const loanRepayment=n(c.loanRepayment);
+  // Operating
+  const dAR=n(d.ar)-n(b.ar);
+  const dLoanAR=n(d.loanAr)-n(b.loanAr);
+  const dInventory=n(d.inventory)-n(b.inventory);
+  const dOCA=n(d.oca)-n(b.oca);
+  const dDeposit=n(d.deposit)-n(b.deposit);
+  const dAP=n(d.ap)-n(b.ap);
+  const dTaxPay=n(d.taxPay)-n(b.taxPay);
+  const dOCL=n(d.ocl)-n(b.ocl);
+  const opCF=pl.netIncome+dep-dAR-dLoanAR-dInventory-dOCA-dDeposit+dAP+dTaxPay+dOCL-interestPaid;
+  // Investing
+  const dPPE=n(d.ppe)-n(b.ppe);
+  const dIntangible=n(d.intangible)-n(b.intangible);
+  const capex=dPPE+dep;
+  const invCF=-(capex>0?capex:dPPE)-(dIntangible>0?dIntangible:0);
+  // Financing
+  const dCapital=n(d.capital)-n(b.capital);
+  const dShortLoan=n(d.shortLoan)-n(b.shortLoan);
+  const dDirectorLoan=n(d.directorLoan)-n(b.directorLoan);
+  const divPaid=n(c.dividends);
+  const finCF=dCapital+loanProceeds-loanRepayment+dShortLoan+dDirectorLoan-divPaid;
+  const netCF=opCF+invCF+finCF;
+  const beginCash=n(b.cash);
+  const endCash=beginCash+netCF;
+  return{
+    netIncome:pl.netIncome,dep,
+    dAR,dLoanAR,dInventory,dOCA,dDeposit,dAP,dTaxPay,dOCL,
+    interestPaid:-interestPaid,
+    opCF,
+    dPPE,dIntangible,capex,invCF,
+    dCapital,dShortLoan,dDirectorLoan,
+    loanProceeds,loanRepayment:-loanRepayment,
+    divPaid:-divPaid,finCF,
+    netCF,beginCash,endCash,bsCash:bs.cash
+  };
+}
+
+// ===== BANK LOAN DEFAULTS =====
+function defaultBankAnalysis(){
+  return{score:0,level:'',levelCls:'',strengths:[],risks:[],recommendations:[],redFlags:[],loanCapacity:{},updatedAt:0};
+}
+function defaultScenarios(){return[];}
+function defaultReportSettings(){
+  return{
+    reportTitle:'Pro Forma Financial Statements – For Bank Loan Preparation Only',
+    reportSubtitleTH:'งบการเงินประมาณการเพื่อประกอบการพิจารณาสินเชื่อเท่านั้น',
+    preparedBy:'',reviewedBy:'',
+    showDisclaimer:true,showBankAnalysis:true,showScenario:false
+  };
+}
+
+function computeBankability(pl,bs,kpi,cfRes){
+  let score=0;
+  const strengths=[],risks=[],recs=[];
+  const nm=kpi.netMargin,gm=kpi.grossMargin,cr=kpi.currentRatio,de=kpi.de;
+  const ic=kpi.interestCoverage,dr=kpi.debtRatio;
+  // Net Margin (12)
+  if(nm>=10){score+=12;strengths.push(`Net Margin ${nm.toFixed(1)}% — ดี`);}
+  else if(nm>=5)score+=7;
+  else if(nm>=0){score+=2;risks.push(`Net Margin ${nm.toFixed(1)}% — ต่ำ`);}
+  else risks.push('Net Margin ติดลบ');
+  // Gross Margin (10)
+  if(gm>=25){score+=10;strengths.push(`Gross Margin ${gm.toFixed(1)}% — ดี`);}
+  else if(gm>=15)score+=7;
+  else if(gm>=5){score+=3;risks.push(`Gross Margin ${gm.toFixed(1)}% — ต่ำ`);}
+  else risks.push('Gross Margin ต่ำมาก');
+  // Current Ratio (15)
+  if(cr>=2){score+=15;strengths.push(`Current Ratio ${cr.toFixed(2)} — ดี`);}
+  else if(cr>=1.5)score+=12;
+  else if(cr>=1){score+=6;risks.push(`Current Ratio ${cr.toFixed(2)} — ต่ำ`);}
+  else risks.push(`Current Ratio ${cr.toFixed(2)} — ต่ำกว่า 1 วิกฤต`);
+  // D/E (15)
+  if(de<=1){score+=15;strengths.push(`D/E ${de.toFixed(2)} — ดี`);}
+  else if(de<=2)score+=10;
+  else if(de<=3){score+=5;risks.push(`D/E ${de.toFixed(2)} — สูง`);}
+  else risks.push(`D/E ${de.toFixed(2)} — สูงมาก`);
+  // Interest Coverage (15)
+  if(ic===null){score+=8;}
+  else if(ic>=3){score+=15;strengths.push(`Interest Coverage ${ic.toFixed(1)} — ดี`);}
+  else if(ic>=1.5)score+=8;
+  else{risks.push(`Interest Coverage ${ic.toFixed(1)} — ต่ำกว่า 1.5`);}
+  // Operating CF (10)
+  if(cfRes&&cfRes.opCF>0){score+=10;strengths.push('กระแสเงินสดดำเนินงานเป็นบวก');}
+  else if(cfRes&&cfRes.opCF<=0)risks.push('กระแสเงินสดดำเนินงานติดลบ');
+  // Cash (8)
+  if(bs.cash>0)score+=8;
+  else risks.push('เงินสดติดลบ');
+  // Tax consistency (8)
+  if(pl.pbt>0){
+    const tp=pl.tax/pl.pbt*100;
+    if(tp>=15){score+=8;strengths.push(`ภาษี ${tp.toFixed(1)}% ของ PBT สมเหตุสมผล`);}
+    else if(tp>=5)score+=4;
+    else risks.push(`ภาษี ${tp.toFixed(1)}% ของ PBT — อาจถูกตั้งคำถาม`);
+  }else score+=4;
+  // Revenue (7)
+  if(pl.totalRev>0)score+=7;
+  else risks.push('ยังไม่มีรายได้');
+  // Recommendations
+  if(de>2)recs.push('เพิ่มทุนหรือแปลงเงินกู้กรรมการเป็นทุน เพื่อลด D/E');
+  if(cr<1.5)recs.push('เพิ่มเงินทุนหมุนเวียน หรือปรับโครงสร้างหนี้ระยะสั้นเป็นระยะยาว');
+  if(nm<5)recs.push('ลดต้นทุนหรือค่าใช้จ่าย เพื่อเพิ่ม Net Margin');
+  if(ic!==null&&ic<2)recs.push('ลดภาระดอกเบี้ย หรือเพิ่ม EBIT ก่อนยื่นกู้');
+  if(pl.pbt>0&&pl.tax/pl.pbt<0.1)recs.push('ปรับภาษีให้ใกล้ 20% ของกำไรก่อนภาษี เพื่อความน่าเชื่อถือ');
+  if(bs.cash<0)recs.push('แก้ปัญหาเงินสดติดลบก่อน — ธนาคารจะไม่อนุมัติ');
+  const level=score>=80?'ดีมาก':score>=65?'ดี':score>=50?'พอใช้':score>=35?'เสี่ยง':'เสี่ยงสูง';
+  const levelCls=score>=65?'green':score>=50?'amber':'red';
+  return{score,level,levelCls,strengths,risks,recommendations:recs};
+}
+
+function computeRedFlags(pl,bs,kpi,cfRes,base){
+  const flags=[];
+  function flag(label,status,desc,suggest){flags.push({label,status,desc,suggest});}
+  if(Math.abs(bs.diff)>1)flag('งบดุลไม่ดุล','critical',`ส่วนต่าง ${fmt(bs.diff)}`,'ตรวจสอบ BS ทุกรายการ');
+  else flag('งบดุล','ok','สมดุล','');
+  flag('เงินสด',bs.cash<0?'critical':bs.cash===0?'warn':'ok',
+    bs.cash<0?`เงินสด ${fmt(bs.cash)}`:`${fmt(bs.cash)}`,
+    bs.cash<0?'เพิ่มเงินสด หรือตรวจ Auto-Balance':'');
+  const crSt=kpi.currentRatio<1?'critical':kpi.currentRatio<1.5?'warn':'ok';
+  flag('Current Ratio',crSt,kpi.currentRatio.toFixed(2),crSt!=='ok'?'เพิ่มสินทรัพย์หมุนเวียน หรือลดหนี้ระยะสั้น':'');
+  const deSt=kpi.de>3?'critical':kpi.de>2?'warn':'ok';
+  flag('D/E Ratio',deSt,kpi.de.toFixed(2),deSt!=='ok'?'เพิ่มทุน หรือลดหนี้':'');
+  if(kpi.interestCoverage!==null){
+    const icSt=kpi.interestCoverage<1.5?'critical':kpi.interestCoverage<2.5?'warn':'ok';
+    flag('Interest Coverage',icSt,kpi.interestCoverage.toFixed(2),icSt!=='ok'?'เพิ่ม EBIT หรือลดดอกเบี้ย':'');
+  }
+  if(pl.pbt>0){
+    const tp=pl.tax/pl.pbt*100;
+    flag('อัตราภาษีต่อ PBT',tp<5?'critical':tp<15?'warn':'ok',`${tp.toFixed(1)}%`,tp<5?'ปรับภาษีให้ใกล้ 20% — ธนาคารตั้งคำถาม':'');
+  }
+  if(cfRes)flag('กระแสเงินสดดำเนินงาน',cfRes.opCF<0?'warn':'ok',fmt(cfRes.opCF),cfRes.opCF<0?'ตรวจสอบเงินทุนหมุนเวียน':'');
+  flag('กำไรสุทธิ',pl.netIncome<0?'critical':pl.netIncome===0?'warn':'ok',fmt(pl.netIncome),pl.netIncome<0?'แก้โครงสร้างรายได้/ค่าใช้จ่าย':'');
+  flag('รายได้รวม',pl.totalRev<=0?'critical':'ok',fmt(pl.totalRev),pl.totalRev<=0?'กรอกรายได้ให้ครบ':'');
+  // Director loan too high
+  if(n(base.directorLoan)>0&&bs.totalAssets>0){
+    const dlRatio=n(base.directorLoan)/bs.totalAssets*100;
+    if(dlRatio>30)flag('เงินกู้กรรมการสูง','warn',`${dlRatio.toFixed(1)}% ของสินทรัพย์`,'พิจารณาแปลงเป็นทุน');
+  }
+  return flags;
+}
+
+function computeLoanCapacity(ebitda,interestRate,termMonths,dscrTarget){
+  if(!ebitda||ebitda<=0||!interestRate||!termMonths||!dscrTarget)return null;
+  const annualDS=ebitda/dscrTarget;
+  const monthlyDS=annualDS/12;
+  const r=interestRate/12;
+  const loanCapacity=r>0?monthlyDS*(1-Math.pow(1+r,-termMonths))/r:monthlyDS*termMonths;
+  return{ebitda,annualDS,monthlyDS,loanCapacity,dscr:dscrTarget};
+}
+
+// ===== FIREBASE INIT =====
+function initFirebase(){
+  const s1=document.createElement('script');
+  s1.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+  s1.onload=()=>{
+    const s2=document.createElement('script');
+    s2.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js';
+    s2.onload=()=>{
+      try{
+        firebase.initializeApp(FB_CFG);
+        db=firebase.firestore();
+        db.enablePersistence({synchronizeTabs:false}).catch(()=>{});
+        S.online=true;
+        document.getElementById('dot').classList.add('on');
+        document.getElementById('dot-lbl').textContent='ออนไลน์';
+        loadFromFirebase();
+      }catch(e){console.warn('Firebase:',e);}
+    };
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s1);
+}
+
+async function loadFromFirebase(){
+  try{
+    // Load companies
+    const snap=await db.collection('proforma_companies').get();
+    snap.forEach(doc=>{
+      const c=doc.data();
+      if(!S.companies.find(x=>x.id===c.id)){
+        S.companies.push(c);
+      }
+    });
+    lsSaveCompanies();
+    // Load years for all companies
+    const ySnap=await db.collection('proforma_years').get();
+    ySnap.forEach(doc=>{
+      const data=doc.data();
+      const cId=data.cId;
+      const yr=data.yr;
+      if(cId&&yr){
+        if(!S.years[cId])S.years[cId]={};
+        if(!S.years[cId][yr]){
+          S.years[cId][yr]=data;
+          lsSaveYear(cId,yr,data);
+        }
+      }
+    });
+    render();
+  }catch(e){console.warn('Firebase load:',e);}
+}
+
+// ===== RENDER MAIN =====
+function render(){
+  const app=document.getElementById('app');
+  if(S.view==='dashboard'){
+    app.innerHTML=renderDashboard();
+  }else if(S.view==='editor'){
+    app.innerHTML=renderEditor();
+    attachEditorEvents();
+  }
+}
+
+// ===== DASHBOARD =====
+function renderDashboard(){
+  let cards='';
+  if(S.companies.length===0){
+    cards=`<div class="empty">
+      <div class="empty-icon">🏢</div>
+      <div class="empty-txt">ยังไม่มีบริษัทในระบบ</div>
+      <div class="empty-sub">เริ่มต้นด้วยการเพิ่มบริษัทแรก</div>
+      <button class="btn btn-primary" onclick="showAddCompanyModal()">+ เพิ่มบริษัท</button>
+    </div>`;
+  }else{
+    S.companies.forEach(c=>{
+      const yrs=getAllYears(c.id);
+      let chips='';
+      if(yrs.length===0){
+        chips=`<span class="ychip none">ยังไม่มีข้อมูล</span>`;
+      }else{
+        yrs.forEach(yr=>{
+          const yd=getYearData(c.id,yr);
+          const st=yd?yd.status:'draft';
+          chips+=`<button class="ychip ${st}" onclick="openEditor('${c.id}','${yr}')">${yr}</button>`;
+        });
+      }
+      cards+=`
+      <div class="co-card">
+        <div class="co-name">${esc(c.name)}</div>
+        <div class="co-meta">
+          เลขทะเบียน: ${esc(c.taxId||'-')}<br>
+          กรรมการ: ${esc(c.director||'-')}<br>
+          ประเภท: ${esc(c.businessType||'-')}
+        </div>
+        <div class="co-foot">
+          <div class="ychips">${chips}</div>
+          <div class="card-acts">
+            <button class="btn btn-xs btn-secondary" onclick="showAddYearModal('${c.id}')">+ ปี</button>
+            <button class="btn btn-xs btn-secondary" onclick="showEditCompanyModal('${c.id}')">✎</button>
+            <button class="btn btn-xs btn-danger" onclick="confirmDeleteCompany('${c.id}')">✕</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    cards=`<div class="grid-co">${cards}</div>`;
+  }
+  return `<div class="wrap">
+    <div class="dash-hdr">
+      <div class="dash-title">รายการบริษัท</div>
+      <button class="btn btn-primary" onclick="showAddCompanyModal()">+ เพิ่มบริษัท</button>
+    </div>
+    ${cards}
+  </div>`;
+}
+
+function esc(s){
+  if(!s)return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== EDITOR =====
+function openEditor(cId,yr){
+  S.view='editor';
+  S.currentCo=cId;
+  S.currentYear=yr;
+  S.editorTab='base';
+  render();
+}
+
+function renderEditor(){
+  const co=getCompany(S.currentCo);
+  if(!co)return`<div class="wrap"><p>ไม่พบบริษัท</p></div>`;
+  const yrs=getAllYears(S.currentCo);
+  const yd=getYearData(S.currentCo,S.currentYear)||{status:'draft',base:defaultBase(),draft:defaultDraft(),settings:defaultSettings(),cf:defaultCF()};
+
+  let timelineHtml='';
+  yrs.forEach(yr=>{
+    const d=getYearData(S.currentCo,yr);
+    const st=d?d.status:'draft';
+    const active=yr===S.currentYear?'active':'';
+    timelineHtml+=`<div class="ty ${active}" onclick="selectYear('${yr}')">
+      <span>${yr}</span>
+      <span class="ty-st ${st}">${st==='final'?'Final':'Draft'}</span>
+    </div>`;
+  });
+
+  const tabBase=S.editorTab==='base'?'active':'';
+  const tabDraft=S.editorTab==='draft'?'active':'';
+  const tabCF=S.editorTab==='cashflow'?'active':'';
+  const tabNotes=S.editorTab==='notes'?'active':'';
+  const tabBank=S.editorTab==='bank'?'active':'';
+
+  const statusLabel=yd.status==='final'?'Final':'Draft';
+  const toggleBtn=yd.status==='final'
+    ?`<button class="btn btn-sm btn-secondary" onclick="toggleStatus()">เปลี่ยนเป็น Draft</button>`
+    :`<button class="btn btn-sm btn-amber" onclick="toggleStatus()">เปลี่ยนเป็น Final</button>`;
+
+  const tabContent=S.editorTab==='base'?renderBaseTab(yd)
+    :S.editorTab==='draft'?renderDraftTab(yd)
+    :S.editorTab==='cashflow'?renderCashFlowTab(yd)
+    :S.editorTab==='bank'?renderBankTab(yd)
+    :renderNotesTab(yd);
+
+  return`<div class="wrap">
+    <div class="bc">
+      <a onclick="goHome()">หน้าหลัก</a>
+      <span class="bc-sep">›</span>
+      <span>${esc(co.name)}</span>
+      <span class="bc-sep">›</span>
+      <span>ปี ${S.currentYear}</span>
+    </div>
+    <div class="ed-hdr">
+      <div>
+        <div class="ed-co-name">${esc(co.name)}</div>
+        <div class="ed-co-meta">${esc(co.taxId||'')} · กรรมการ: ${esc(co.director||'')} · ${esc(co.address||'')}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="sbadge ${yd.status||'draft'}">${statusLabel}</span>
+        ${toggleBtn}
+      </div>
+    </div>
+    <div class="timeline">
+      ${timelineHtml}
+      <div class="ty-add">
+        <button class="btn btn-sm btn-primary" onclick="showAddYearModal('${S.currentCo}')">+ เพิ่มปี</button>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:var(--r) var(--r) 0 0;box-shadow:var(--shadow)">
+      <div class="ed-tabs">
+        <button class="etab ${tabBase}" onclick="switchTab('base')">A — ปีฐาน</button>
+        <button class="etab ${tabDraft}" onclick="switchTab('draft')">B — ร่างปรับใหม่</button>
+        <button class="etab ${tabCF}" onclick="switchTab('cashflow')">C — กระแสเงินสด</button>
+        <button class="etab ${tabNotes}" onclick="switchTab('notes')">D — หมายเหตุ</button>
+        <button class="etab ${tabBank}" onclick="switchTab('bank')">E — วิเคราะห์สินเชื่อ</button>
+      </div>
+    </div>
+    <div id="ed-tab-content" style="background:#fff;border-radius:0 0 var(--r) var(--r);box-shadow:var(--shadow);padding:20px;margin-bottom:20px">
+      ${tabContent}
+    </div>
+  </div>`;
+}
+
+// ===== BASE YEAR TAB =====
+function renderBaseTab(yd){
+  const b=Object.assign(defaultBase(),yd.base||{});
+  function bf(field,label){
+    return`<div class="bfield">
+      <label>${label}</label>
+      <input type="number" step="0.01" id="b-${field}" value="${n(b[field])}"
+        onchange="onBaseChange('${field}',this.value)">
+    </div>`;
+  }
+  const r=computeBase(b);
+  const diff=r.bs.totalAssets-r.bs.totalLiabEq;
+  const bsOk=Math.abs(diff)<1;
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;color:var(--gray)">กรอกตัวเลขจากงบการเงินจริง (PDF / ต้นฉบับ)</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm btn-secondary" onclick="showAIImportModal()">✨ AI นำเข้า</button>
+      <button class="btn btn-sm btn-secondary" onclick="fillFromPrevYear()">📋 ดึงข้อมูลปีก่อน</button>
+    </div>
+  </div>
+
+  <div class="stit">งบกำไรขาดทุนเบ็ดเสร็จ</div>
+  <div class="bg2">
+    ${bf('rev','รายได้จากการขาย/รับเหมาก่อสร้าง')}
+    ${bf('otherRev','รายได้อื่น')}
+    ${bf('cogs','ต้นทุนขาย/ต้นทุนก่อสร้าง')}
+    ${bf('admin','ค่าใช้จ่ายในการบริหาร')}
+    ${bf('depExp','ค่าเสื่อมราคา')}
+    ${bf('interestExp','ดอกเบี้ยจ่าย')}
+    ${bf('tax','ภาษีเงินได้นิติบุคคล')}
+    ${bf('netIncome','กำไรสุทธิ (จากงบจริง)')}
+  </div>
+  <div id="base-pl-summary" style="margin:8px 0 16px;padding:10px 14px;background:#F0F4F8;border-radius:8px;font-size:12px;color:var(--gray)">
+    กำไรขั้นต้น: <b style="color:var(--navy)">${fmtNum(r.pl.grossProfit)}</b> &nbsp;|&nbsp;
+    EBIT: <b style="color:var(--navy)">${fmtNum(r.pl.ebit)}</b> &nbsp;|&nbsp;
+    กำไรก่อนภาษี: <b style="color:var(--navy)">${fmtNum(r.pl.pbt)}</b>
+  </div>
+
+  <div class="stit">งบฐานะการเงิน — สินทรัพย์</div>
+  <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase">สินทรัพย์หมุนเวียน</div>
+  <div class="bg2">
+    ${bf('cash','เงินสด')}
+    ${bf('ar','ลูกหนี้การค้า')}
+    ${bf('loanAr','ลูกหนี้เงินกู้')}
+    ${bf('inventory','สินค้าคงเหลือ')}
+    ${bf('oca','สินทรัพย์หมุนเวียนอื่น')}
+    ${bf('deposit','เงินมัดจำ/เงินประกัน')}
+  </div>
+  <div style="font-size:11px;font-weight:700;color:var(--gray);margin:10px 0 6px;text-transform:uppercase">สินทรัพย์ไม่หมุนเวียน</div>
+  <div class="bg2">
+    ${bf('ppe','ที่ดิน อาคาร อุปกรณ์ — สุทธิ')}
+    ${bf('intangible','สินทรัพย์ไม่มีตัวตน')}
+  </div>
+
+  <div class="stit">งบฐานะการเงิน — หนี้สินและทุน</div>
+  <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase">หนี้สินหมุนเวียน</div>
+  <div class="bg2">
+    ${bf('ap','เจ้าหนี้การค้า')}
+    ${bf('shortLoan','เงินกู้ระยะสั้น')}
+    ${bf('longLoan','เงินกู้ระยะยาว — ส่วนถึงกำหนด 1 ปี')}
+    ${bf('taxPay','ภาษีค้างจ่าย')}
+    ${bf('ocl','หนี้สินหมุนเวียนอื่น')}
+  </div>
+  <div style="font-size:11px;font-weight:700;color:var(--gray);margin:10px 0 6px;text-transform:uppercase">หนี้สินไม่หมุนเวียน</div>
+  <div class="bg2">
+    ${bf('longLoanNC','เงินกู้ระยะยาว — ส่วนไม่หมุนเวียน')}
+    ${bf('directorLoan','เงินกู้กรรมการ/ผู้ถือหุ้น')}
+  </div>
+  <div style="font-size:11px;font-weight:700;color:var(--gray);margin:10px 0 6px;text-transform:uppercase">ส่วนของผู้ถือหุ้น</div>
+  <div class="bg2">
+    ${bf('capital','ทุนชำระแล้ว')}
+    ${bf('reBegin','กำไรสะสมต้นปี')}
+  </div>
+
+  <div id="base-bs-check" style="margin:8px 0 16px;padding:10px 14px;border-radius:8px;font-size:12px;${bsOk?'background:var(--green-lt);color:#166534':'background:var(--red-lt);color:#991B1B'}">
+    รวมสินทรัพย์: <b>${fmtNum(r.bs.totalAssets)}</b> &nbsp;|&nbsp;
+    รวมหนี้สิน+ทุน: <b>${fmtNum(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp;
+    ส่วนต่าง: <b>${fmtNum(diff)}</b>
+    ${bsOk?' ✓ ดุล':' ⚠ ไม่ดุล'}
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn btn-primary" onclick="saveBase()">💾 บันทึกปีฐาน</button>
+    <button class="btn btn-secondary" onclick="switchTab('draft')">→ ไปร่างปรับใหม่</button>
+  </div>`;
+}
+
+// ===== DRAFT TAB =====
+function renderDraftTab(yd){
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const base=Object.assign(defaultBase(),yd.base||{});
+  const res=compute(draft,settings);
+  const baseRes=computeBase(base);
+  const d=res.d;const pl=res.pl;const bs=res.bs;const kpi=res.kpi;
+  const mode=settings.taxMode||'auto';
+  const cashAuto=settings.cashAutoBalance;
+
+  function inp(field,val,disabled=false){
+    const v=(val!==undefined&&val!==null)?val:n(d[field]);
+    return`<input class="ni" type="number" step="0.01" id="di-${field}" value="${v}"
+      ${disabled?'disabled':''} onchange="onDraftChange('${field}',this.value)">`;
+  }
+  function cv(id,val,neg=false){
+    return`<span class="cv${neg&&val<0?' neg':''}" id="${id}">${fmt(val)}</span>`;
+  }
+  function bv(v){return`<span style="color:var(--gray)">${fmt(v)}</span>`;}
+
+  const isRev=mode==='target-rev',isCogs=mode==='target-cogs';
+  const diffHtml=Math.abs(bs.diff)<1
+    ?`<span class="diff-ok">✓ ดุล (${fmt(bs.diff)})</span>`
+    :`<span class="diff-err">⚠ ไม่ดุล (${fmt(bs.diff)})</span>`;
+
+  function kpiCard(label,val,unit,cls,id){
+    return`<div class="kpi ${cls}" id="${id}-box"><div class="kl">${label}</div>`+
+      `<div class="kv" id="${id}">${val}${unit}</div></div>`;
+  }
+  const gmCls=kpi.grossMargin>=20?'pos':kpi.grossMargin>=0?'':'neg';
+  const emCls=kpi.ebitMargin>=10?'pos':kpi.ebitMargin>=0?'':'neg';
+  const nmCls=kpi.netMargin>=5?'pos':kpi.netMargin>=0?'':'neg';
+  const deCls=kpi.de<1?'pos':kpi.de<2?'warn':'neg';
+  const drCls=kpi.debtRatio<0.5?'pos':kpi.debtRatio<0.7?'warn':'neg';
+  const crCls=kpi.currentRatio>=2?'pos':kpi.currentRatio>=1?'warn':'neg';
+  const icCls=kpi.interestCoverage===null?'':kpi.interestCoverage>=3?'pos':kpi.interestCoverage>=1.5?'warn':'neg';
+
+  return`
+  <div class="sp">
+    <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">การตั้งค่าการคำนวณ</div>
+    <div class="sgrid">
+      <div>
+        <span class="sl">โหมดภาษี</span>
+        <select class="fc" id="s-taxMode" onchange="onSettingChange('taxMode',this.value)">
+          <option value="auto" ${mode==='auto'?'selected':''}>Auto (PBT × Rate)</option>
+          <option value="target-rev" ${mode==='target-rev'?'selected':''}>Target Tax → คำนวณ REV</option>
+          <option value="target-cogs" ${mode==='target-cogs'?'selected':''}>Target Tax → คำนวณ COGS</option>
+        </select>
+      </div>
+      <div>
+        <span class="sl">อัตราภาษี (%)</span>
+        <input type="number" class="fc" id="s-taxRate" step="0.1" min="0" max="100"
+          value="${(settings.taxRate*100).toFixed(1)}"
+          onchange="onSettingChange('taxRate',parseFloat(this.value)/100)">
+      </div>
+      <div id="target-tax-wrap" ${mode==='auto'?'style="display:none"':''}>
+        <span class="sl">ภาษีเป้าหมาย (บาท)</span>
+        <input type="number" class="fc" id="s-targetTax" step="1000" value="${settings.targetTax||0}"
+          onchange="onSettingChange('targetTax',parseFloat(this.value)||0)">
+      </div>
+      <div>
+        <span class="sl">เงินสด</span>
+        <div class="tog-row">
+          <label class="tog">
+            <input type="checkbox" id="s-cashAuto" ${cashAuto?'checked':''}
+              onchange="onSettingChange('cashAutoBalance',this.checked)">
+            <span class="tsl"></span>
+          </label>
+          <span style="font-size:12px;color:var(--gray)">Auto-Balance</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">
+    ${kpiCard('Gross Margin',fmtPct(kpi.grossMargin),'',gmCls,'cv-kpi-gm')}
+    ${kpiCard('EBIT Margin',fmtPct(kpi.ebitMargin),'',emCls,'cv-kpi-em')}
+    ${kpiCard('Net Margin',fmtPct(kpi.netMargin),'',nmCls,'cv-kpi-nm')}
+    ${kpiCard('D/E Ratio',isFinite(kpi.de)?kpi.de.toFixed(2):'-',' เท่า',deCls,'cv-kpi-de')}
+    ${kpiCard('Debt Ratio',isFinite(kpi.debtRatio)?(kpi.debtRatio*100).toFixed(1)+'%':'','',drCls,'cv-kpi-dr')}
+    ${kpiCard('Current Ratio',isFinite(kpi.currentRatio)?kpi.currentRatio.toFixed(2):'-',' เท่า',crCls,'cv-kpi-cr')}
+    ${kpiCard('Interest Coverage',kpi.interestCoverage!==null?kpi.interestCoverage.toFixed(1):'-',' เท่า',icCls,'cv-kpi-ic')}
+  </div>
+
+  <!-- P&L -->
+  <div class="card" style="overflow-x:auto;margin-bottom:16px;padding:0">
+    <div style="padding:14px 16px 4px;font-size:13px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">งบกำไรขาดทุนเบ็ดเสร็จ</div>
+    <table class="ft"><thead><tr>
+      <th style="width:42%">รายการ</th><th style="width:29%">ร่างปรับใหม่</th><th style="width:29%">ปีฐาน</th>
+    </tr></thead><tbody>
+      <tr class="sh"><td colspan="3">รายได้</td></tr>
+      <tr class="ind">
+        <td>รายได้จากการขาย/รับเหมา ${isRev?'<span style="font-size:10px;color:var(--blue)">[คำนวณ]</span>':''}</td>
+        <td class="num-r">${inp('rev',d.rev,isRev)}</td><td class="num-r">${bv(base.rev)}</td>
+      </tr>
+      <tr class="ind"><td>รายได้อื่น</td><td class="num-r">${inp('otherRev')}</td><td class="num-r">${bv(base.otherRev)}</td></tr>
+      <tr class="tr-sub"><td>รวมรายได้</td><td class="num-r">${cv('cv-totalRev',pl.totalRev)}</td><td class="num-r">${bv(baseRes.pl.totalRev)}</td></tr>
+      <tr class="sh"><td colspan="3">ค่าใช้จ่าย</td></tr>
+      <tr class="ind">
+        <td>ต้นทุนขาย/ต้นทุนก่อสร้าง ${isCogs?'<span style="font-size:10px;color:var(--blue)">[คำนวณ]</span>':''}</td>
+        <td class="num-r">${inp('cogs',d.cogs,isCogs)}</td><td class="num-r">${bv(base.cogs)}</td>
+      </tr>
+      <tr class="ind"><td>ค่าใช้จ่ายในการบริหาร</td><td class="num-r">${inp('admin')}</td><td class="num-r">${bv(base.admin)}</td></tr>
+      <tr class="tr-sub"><td>กำไรขั้นต้น</td><td class="num-r">${cv('cv-grossProfit',pl.grossProfit)}</td><td class="num-r">${bv(baseRes.pl.grossProfit)}</td></tr>
+      <tr class="ind"><td>ค่าเสื่อมราคา</td><td class="num-r">${inp('depExp')}</td><td class="num-r">${bv(base.depExp)}</td></tr>
+      <tr class="tr-sub" style="background:#EFF6FF"><td><b>EBIT</b></td><td class="num-r">${cv('cv-ebit',pl.ebit)}</td><td class="num-r">${bv(baseRes.pl.ebit)}</td></tr>
+      <tr class="ind"><td>ดอกเบี้ยจ่าย</td><td class="num-r">${inp('interestExp')}</td><td class="num-r">${bv(base.interestExp)}</td></tr>
+      <tr class="tr-sub"><td>กำไรก่อนหักภาษี (PBT)</td><td class="num-r">${cv('cv-pbt',pl.pbt)}</td><td class="num-r">${bv(baseRes.pl.pbt)}</td></tr>
+      <tr class="ind">
+        <td>ภาษีเงินได้นิติบุคคล <span style="font-size:10px;color:var(--blue)">${mode==='auto'?`[${(settings.taxRate*100).toFixed(0)}%]`:'[target]'}</span></td>
+        <td class="num-r">${cv('cv-tax',pl.tax)}</td><td class="num-r">${bv(base.tax)}</td>
+      </tr>
+      <tr class="tr-total"><td>กำไรสุทธิ</td><td class="num-r">${cv('cv-netIncome',pl.netIncome,true)}</td><td class="num-r">${bv(baseRes.pl.netIncome)}</td></tr>
+    </tbody></table>
+  </div>
+
+  <!-- Balance Sheet -->
+  <div class="card" style="overflow-x:auto;margin-bottom:16px;padding:0">
+    <div style="padding:14px 16px 4px;font-size:13px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">งบฐานะการเงิน</div>
+    <table class="ft"><thead><tr>
+      <th style="width:42%">รายการ</th><th style="width:29%">ร่างปรับใหม่</th><th style="width:29%">ปีฐาน</th>
+    </tr></thead><tbody>
+      <tr class="sh"><td colspan="3">สินทรัพย์หมุนเวียน</td></tr>
+      <tr class="ind"><td>เงินสด ${cashAuto?'<span style="font-size:10px;color:var(--blue)">[Auto]</span>':''}</td>
+        <td class="num-r">${cashAuto?cv('cv-cash',bs.cash):inp('cash')}</td><td class="num-r">${bv(base.cash)}</td></tr>
+      <tr class="ind"><td>ลูกหนี้การค้า</td><td class="num-r">${inp('ar')}</td><td class="num-r">${bv(base.ar)}</td></tr>
+      <tr class="ind"><td>ลูกหนี้เงินกู้</td><td class="num-r">${inp('loanAr')}</td><td class="num-r">${bv(base.loanAr)}</td></tr>
+      <tr class="ind"><td>สินค้าคงเหลือ</td><td class="num-r">${inp('inventory')}</td><td class="num-r">${bv(base.inventory)}</td></tr>
+      <tr class="ind"><td>สินทรัพย์หมุนเวียนอื่น</td><td class="num-r">${inp('oca')}</td><td class="num-r">${bv(base.oca)}</td></tr>
+      <tr class="ind"><td>เงินมัดจำ/เงินประกัน</td><td class="num-r">${inp('deposit')}</td><td class="num-r">${bv(base.deposit)}</td></tr>
+      <tr class="tr-sub"><td>รวมสินทรัพย์หมุนเวียน</td><td class="num-r">${cv('cv-curAssets',bs.currentAssets)}</td><td class="num-r">${bv(baseRes.bs.currentAssets)}</td></tr>
+      <tr class="sh"><td colspan="3">สินทรัพย์ไม่หมุนเวียน</td></tr>
+      <tr class="ind"><td>ที่ดิน อาคาร อุปกรณ์ — สุทธิ</td><td class="num-r">${inp('ppe')}</td><td class="num-r">${bv(base.ppe)}</td></tr>
+      <tr class="ind"><td>สินทรัพย์ไม่มีตัวตน</td><td class="num-r">${inp('intangible')}</td><td class="num-r">${bv(base.intangible)}</td></tr>
+      <tr class="tr-sub"><td>รวมสินทรัพย์ไม่หมุนเวียน</td><td class="num-r">${cv('cv-ncAssets',bs.nonCurrentAssets)}</td><td class="num-r">${bv(baseRes.bs.nonCurrentAssets)}</td></tr>
+      <tr class="tr-total"><td>รวมสินทรัพย์</td><td class="num-r">${cv('cv-totAssets',bs.totalAssets)}</td><td class="num-r">${bv(baseRes.bs.totalAssets)}</td></tr>
+      <tr class="sh"><td colspan="3">หนี้สินหมุนเวียน</td></tr>
+      <tr class="ind"><td>เจ้าหนี้การค้า</td><td class="num-r">${inp('ap')}</td><td class="num-r">${bv(base.ap)}</td></tr>
+      <tr class="ind"><td>เงินกู้ระยะสั้น</td><td class="num-r">${inp('shortLoan')}</td><td class="num-r">${bv(base.shortLoan)}</td></tr>
+      <tr class="ind"><td>เงินกู้ระยะยาว — ส่วนถึงกำหนด 1 ปี</td><td class="num-r">${inp('longLoan')}</td><td class="num-r">${bv(base.longLoan)}</td></tr>
+      <tr class="ind"><td>ภาษีค้างจ่าย</td><td class="num-r">${inp('taxPay')}</td><td class="num-r">${bv(base.taxPay)}</td></tr>
+      <tr class="ind"><td>หนี้สินหมุนเวียนอื่น</td><td class="num-r">${inp('ocl')}</td><td class="num-r">${bv(base.ocl)}</td></tr>
+      <tr class="tr-sub"><td>รวมหนี้สินหมุนเวียน</td><td class="num-r">${cv('cv-curLiab',bs.currentLiab)}</td><td class="num-r">${bv(baseRes.bs.currentLiab)}</td></tr>
+      <tr class="sh"><td colspan="3">หนี้สินไม่หมุนเวียน</td></tr>
+      <tr class="ind"><td>เงินกู้ระยะยาว — ส่วนไม่หมุนเวียน</td><td class="num-r">${inp('longLoanNC')}</td><td class="num-r">${bv(base.longLoanNC)}</td></tr>
+      <tr class="ind"><td>เงินกู้กรรมการ/ผู้ถือหุ้น</td><td class="num-r">${inp('directorLoan')}</td><td class="num-r">${bv(base.directorLoan)}</td></tr>
+      <tr class="tr-sub"><td>รวมหนี้สินไม่หมุนเวียน</td><td class="num-r">${cv('cv-ncLiab',bs.nonCurrentLiab)}</td><td class="num-r">${bv(baseRes.bs.nonCurrentLiab)}</td></tr>
+      <tr class="tr-sub"><td>รวมหนี้สิน</td><td class="num-r">${cv('cv-totLiab',bs.totalLiab)}</td><td class="num-r">${bv(baseRes.bs.totalLiab)}</td></tr>
+      <tr class="sh"><td colspan="3">ส่วนของผู้ถือหุ้น</td></tr>
+      <tr class="ind"><td>ทุนชำระแล้ว</td><td class="num-r">${inp('capital')}</td><td class="num-r">${bv(base.capital)}</td></tr>
+      <tr class="ind"><td>กำไรสะสมต้นปี</td><td class="num-r">${inp('reBegin')}</td><td class="num-r">${bv(base.reBegin)}</td></tr>
+      <tr class="ind"><td>กำไรสุทธิปีนี้ <span style="font-size:10px;color:var(--blue)">[คำนวณ]</span></td>
+        <td class="num-r">${cv('cv-netIncome2',pl.netIncome,true)}</td><td class="num-r">${bv(baseRes.pl.netIncome)}</td></tr>
+      <tr class="tr-sub"><td>กำไรสะสมปลายปี</td><td class="num-r">${cv('cv-reEnd',bs.reEnd)}</td><td class="num-r">${bv(baseRes.bs.reEnd)}</td></tr>
+      <tr class="tr-sub"><td>รวมส่วนของผู้ถือหุ้น</td><td class="num-r">${cv('cv-totEquity',bs.totalEquity)}</td><td class="num-r">${bv(baseRes.bs.totalEquity)}</td></tr>
+      <tr class="tr-total"><td>รวมหนี้สินและส่วนของผู้ถือหุ้น</td><td class="num-r">${cv('cv-totLiabEq',bs.totalLiabEq)}</td><td class="num-r">${bv(baseRes.bs.totalLiabEq)}</td></tr>
+      <tr>
+        <td colspan="2" style="font-size:12px;font-weight:600;color:var(--gray)">ตรวจดุล (สินทรัพย์ − หนี้สิน+ทุน)</td>
+        <td class="num-r" id="cv-diff">${diffHtml}</td>
+      </tr>
+    </tbody></table>
+  </div>
+
+  <div class="xbar">
+    <button class="btn btn-success" onclick="exportExcel()">⬇ Export Excel</button>
+    <button class="btn btn-secondary" onclick="exportComparativeExcel()">⬇ Comparative Excel</button>
+    <button class="btn btn-primary" onclick="exportPDF()">📄 Export PDF</button>
+    <button class="btn btn-secondary" onclick="autoSaveDraft()">💾 บันทึก Draft</button>
+  </div>`;
+}
+
+// ===== CASH FLOW TAB =====
+function renderCashFlowTab(yd){
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const base=Object.assign(defaultBase(),yd.base||{});
+  const cf=Object.assign(defaultCF(),yd.cf||{});
+  const res=compute(draft,settings);
+  const r=computeCF(base,draft,settings,cf,res);
+
+  function cfRow(label,val,indent,bold,id){
+    const st=(indent?'padding-left:24px;':'')+(bold?'font-weight:700':'');
+    const numSt='text-align:right;font-family:"Courier New",monospace;font-size:12px;'+(bold?'font-weight:700':'');
+    return`<tr>
+      <td style="${st};padding:4px 12px">${label}</td>
+      <td style="${numSt};padding:4px 12px"${id?` id="${id}"`:''}>${fmt(val)}</td>
+    </tr>`;
+  }
+  function secHdr(label){
+    return`<tr><td colspan="2" style="padding:8px 12px;font-weight:700;color:var(--navy);font-size:11px;background:#F0F4F8;text-transform:uppercase;letter-spacing:.4px">${label}</td></tr>`;
+  }
+  function subTotal(label,val,id){
+    return`<tr style="border-top:1.5px solid #CBD5E1">
+      <td style="font-weight:700;padding:7px 12px">${label}</td>
+      <td style="text-align:right;font-weight:700;font-family:'Courier New',monospace;font-size:12px;padding:7px 12px"${id?` id="${id}"`:''}>${fmt(val)}</td>
+    </tr>`;
+  }
+
+  const cashMatch=Math.abs(r.endCash-r.bsCash)<1;
+
+  return`
+  <div style="font-size:13px;color:var(--gray);margin-bottom:16px">
+    งบกระแสเงินสด (วิธีทางอ้อม) — คำนวณจากการเปลี่ยนแปลงระหว่างปีฐาน → ร่างปรับใหม่
+  </div>
+
+  <div class="sp">
+    <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">รายการปรับปรุง (กรอกเอง)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;max-width:700px">
+      <div class="fg">
+        <label class="fl">ค่าเสื่อมราคาปีนี้ (บวกกลับ)</label>
+        <input type="number" class="fc" id="cf-depreciation" step="0.01" value="${n(cf.depreciation)}"
+          onchange="onCFChange('depreciation',this.value)">
+      </div>
+      <div class="fg">
+        <label class="fl">เงินปันผลจ่าย</label>
+        <input type="number" class="fc" id="cf-dividends" step="0.01" value="${n(cf.dividends)}"
+          onchange="onCFChange('dividends',this.value)">
+      </div>
+      <div class="fg">
+        <label class="fl">ดอกเบี้ยจ่ายจริง (Cash)</label>
+        <input type="number" class="fc" id="cf-interestPaid" step="0.01" value="${n(cf.interestPaid)}"
+          onchange="onCFChange('interestPaid',this.value)">
+      </div>
+      <div class="fg">
+        <label class="fl">รับเงินกู้ระยะยาว</label>
+        <input type="number" class="fc" id="cf-loanProceeds" step="0.01" value="${n(cf.loanProceeds)}"
+          onchange="onCFChange('loanProceeds',this.value)">
+      </div>
+      <div class="fg">
+        <label class="fl">ชำระคืนเงินกู้ระยะยาว</label>
+        <input type="number" class="fc" id="cf-loanRepayment" step="0.01" value="${n(cf.loanRepayment)}"
+          onchange="onCFChange('loanRepayment',this.value)">
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="overflow-x:auto;margin-bottom:16px;padding:0">
+    <div style="padding:14px 16px 4px;font-size:13px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border)">งบกระแสเงินสด</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr>
+          <th style="background:var(--navy);color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:12px;width:65%">รายการ</th>
+          <th style="background:var(--navy);color:#fff;padding:10px 12px;text-align:right;font-weight:600;font-size:12px;width:35%">ร่างปรับใหม่</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${secHdr('กระแสเงินสดจากกิจกรรมดำเนินงาน')}
+        ${cfRow('กำไรสุทธิ',r.netIncome,false,false)}
+        <tr><td style="padding:3px 12px;font-size:11px;color:var(--gray)">รายการปรับปรุง:</td><td></td></tr>
+        ${r.dep!==0?cfRow('+ ค่าเสื่อมราคา',r.dep,true,false):''}
+        <tr><td style="padding:3px 12px 3px 24px;font-size:11px;color:var(--gray)">การเปลี่ยนแปลงในเงินทุนหมุนเวียน:</td><td></td></tr>
+        ${cfRow('ลูกหนี้การค้า (เพิ่ม)/ลด',-r.dAR,true,false)}
+        ${r.dLoanAR!==0?cfRow('ลูกหนี้เงินกู้ (เพิ่ม)/ลด',-r.dLoanAR,true,false):''}
+        ${r.dInventory!==0?cfRow('สินค้าคงเหลือ (เพิ่ม)/ลด',-r.dInventory,true,false):''}
+        ${r.dOCA!==0?cfRow('สินทรัพย์หมุนเวียนอื่น (เพิ่ม)/ลด',-r.dOCA,true,false):''}
+        ${r.dDeposit!==0?cfRow('เงินมัดจำ (เพิ่ม)/ลด',-r.dDeposit,true,false):''}
+        ${cfRow('เจ้าหนี้การค้า เพิ่ม/(ลด)',r.dAP,true,false)}
+        ${r.dTaxPay!==0?cfRow('ภาษีค้างจ่าย เพิ่ม/(ลด)',r.dTaxPay,true,false):''}
+        ${r.dOCL!==0?cfRow('หนี้สินหมุนเวียนอื่น เพิ่ม/(ลด)',r.dOCL,true,false):''}
+        ${r.interestPaid!==0?cfRow('จ่ายดอกเบี้ย',r.interestPaid,true,false):''}
+        ${subTotal('เงินสดสุทธิจากกิจกรรมดำเนินงาน',r.opCF,'cf-opCF')}
+
+        ${secHdr('กระแสเงินสดจากกิจกรรมลงทุน')}
+        ${cfRow(r.capex>0?'จ่ายซื้อที่ดิน อาคาร อุปกรณ์':'รับจากจำหน่ายสินทรัพย์',r.invCF+(r.dIntangible>0?r.dIntangible:0),true,false)}
+        ${r.dIntangible>0?cfRow('จ่ายซื้อสินทรัพย์ไม่มีตัวตน',-r.dIntangible,true,false):''}
+        ${subTotal('เงินสดสุทธิจากกิจกรรมลงทุน',r.invCF,'cf-invCF')}
+
+        ${secHdr('กระแสเงินสดจากกิจกรรมจัดหาเงิน')}
+        ${r.dCapital!==0?cfRow('รับเพิ่มทุน',r.dCapital,true,false):''}
+        ${r.loanProceeds!==0?cfRow('รับเงินกู้ระยะยาว',r.loanProceeds,true,false):''}
+        ${r.loanRepayment!==0?cfRow('ชำระคืนเงินกู้ระยะยาว',r.loanRepayment,true,false):''}
+        ${r.dShortLoan!==0?cfRow('เงินกู้ระยะสั้น เพิ่ม/(ลด)',r.dShortLoan,true,false):''}
+        ${r.dDirectorLoan!==0?cfRow('เงินกู้กรรมการ เพิ่ม/(ลด)',r.dDirectorLoan,true,false):''}
+        ${r.divPaid!==0?cfRow('จ่ายเงินปันผล',r.divPaid,true,false):''}
+        ${subTotal('เงินสดสุทธิจากกิจกรรมจัดหาเงิน',r.finCF,'cf-finCF')}
+
+        <tr style="background:#EFF6FF;border-top:2px solid var(--blue);border-bottom:2px solid var(--blue)">
+          <td style="font-weight:700;padding:9px 12px">เงินสดเพิ่ม (ลด) สุทธิสำหรับปี</td>
+          <td style="text-align:right;font-weight:700;font-family:'Courier New',monospace;font-size:12px;padding:9px 12px" id="cf-netCF">${fmt(r.netCF)}</td>
+        </tr>
+        ${cfRow('เงินสดต้นปี',r.beginCash,false,false)}
+        <tr style="background:#F0F4F8;border-top:2px solid #000;border-bottom:2px solid #000">
+          <td style="font-weight:700;padding:9px 12px">เงินสดปลายปี</td>
+          <td style="text-align:right;font-weight:700;font-family:'Courier New',monospace;font-size:12px;padding:9px 12px" id="cf-endCash">${fmt(r.endCash)}</td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding:8px 12px;font-size:12px">
+            ตรวจสอบกับงบดุล (เงินสด: <b>${fmtNum(r.bsCash)}</b>)
+            <span style="${cashMatch?'color:var(--green)':'color:var(--red)'};font-weight:700;margin-left:8px">${cashMatch?'✓ ตรงกัน':'⚠ ไม่ตรงกัน — ตรวจสอบค่าเสื่อมราคา/ทุน'}</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn btn-secondary" onclick="switchTab('draft')">← กลับร่างปรับใหม่</button>
+    <button class="btn btn-success" onclick="exportExcel()">⬇ Export Excel</button>
+    <button class="btn btn-primary" onclick="exportPDF()">📄 Export PDF</button>
+  </div>`;
+}
+
+// ===== NOTES TAB =====
+function renderNotesTab(yd){
+  const notes=Object.assign(defaultNotes(),yd.notes||{});
+  const pol=Object.assign(defaultNotes().accountingPolicies,notes.accountingPolicies||{});
+  const ppeRows=notes.ppeSchedule||[];
+  const rpRows=notes.relatedParties||[];
+
+  function ppeRow(row,idx){
+    const net=n(row.cost)-n(row.accDep);
+    return`<tr>
+      <td>${esc(row.name||'')}</td>
+      <td class="num-r">${fmtNum(n(row.cost))}</td>
+      <td class="num-r">${fmtNum(n(row.accDep))}</td>
+      <td class="num-r">${fmtNum(net)}</td>
+      <td class="num-r">${n(row.depRate)||0}%</td>
+      <td class="num-r">${fmtNum(n(row.depYear))}</td>
+      <td><button class="btn btn-xs btn-danger" onclick="deletePPERow(${idx})">✕</button></td>
+    </tr>`;
+  }
+  function rpRow(row,idx){
+    return`<tr>
+      <td>${esc(row.name||'')}</td><td>${esc(row.relation||'')}</td>
+      <td>${esc(row.txType||'')}</td>
+      <td class="num-r">${fmtNum(n(row.amount))}</td>
+      <td class="num-r">${fmtNum(n(row.balance))}</td>
+      <td><button class="btn btn-xs btn-danger" onclick="deleteRPRow(${idx})">✕</button></td>
+    </tr>`;
+  }
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;color:var(--gray)">หมายเหตุประกอบงบการเงิน (TFRS for NPAEs)</div>
+    <button class="btn btn-sm btn-secondary" onclick="aiDraftNotes()">✨ AI ร่างหมายเหตุ</button>
+  </div>
+
+  <div class="stit">นโยบายการบัญชีที่สำคัญ</div>
+  <div class="bg2">
+    <div class="fg" style="grid-column:span 2">
+      <label class="fl">การรับรู้รายได้</label>
+      <input class="fc" id="note-revRec" value="${esc(pol.revenueRecognition)}"
+        onchange="onNoteChange('accountingPolicies','revenueRecognition',this.value)">
+    </div>
+    <div class="fg">
+      <label class="fl">วิธีคิดมูลค่าสินค้าคงเหลือ</label>
+      <select class="fc" onchange="onNoteChange('accountingPolicies','inventoryMethod',this.value)">
+        <option value="FIFO" ${pol.inventoryMethod==='FIFO'?'selected':''}>FIFO (เข้าก่อน-ออกก่อน)</option>
+        <option value="WA" ${pol.inventoryMethod==='WA'?'selected':''}>Weighted Average</option>
+        <option value="Specific" ${pol.inventoryMethod==='Specific'?'selected':''}>Specific Identification</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">วิธีคำนวณค่าเสื่อมราคา</label>
+      <select class="fc" onchange="onNoteChange('accountingPolicies','ppeDepMethod',this.value)">
+        <option value="SL" ${pol.ppeDepMethod==='SL'?'selected':''}>Straight-Line (เส้นตรง)</option>
+        <option value="DB" ${pol.ppeDepMethod==='DB'?'selected':''}>Declining Balance</option>
+        <option value="UOP" ${pol.ppeDepMethod==='UOP'?'selected':''}>Units of Production</option>
+      </select>
+    </div>
+    <div class="fg" style="grid-column:span 2">
+      <label class="fl">นโยบายภาษีเงินได้</label>
+      <input class="fc" id="note-taxPolicy" value="${esc(pol.taxPolicy)}"
+        onchange="onNoteChange('accountingPolicies','taxPolicy',this.value)">
+    </div>
+  </div>
+
+  <div class="stit" style="display:flex;justify-content:space-between;align-items:center">
+    <span>ตารางที่ดิน อาคาร อุปกรณ์</span>
+    <button class="btn btn-xs btn-primary" onclick="showAddPPEModal()">+ เพิ่มรายการ</button>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="notes-tbl">
+      <thead><tr>
+        <th>รายการ</th><th class="num-r">ราคาทุน</th><th class="num-r">ค่าเสื่อมสะสม</th>
+        <th class="num-r">มูลค่าสุทธิ</th><th class="num-r">อัตรา%</th><th class="num-r">ค่าเสื่อมปีนี้</th><th></th>
+      </tr></thead>
+      <tbody id="ppe-tbody">
+        ${ppeRows.length?ppeRows.map(ppeRow).join('')
+          :`<tr><td colspan="7" style="text-align:center;padding:12px;color:var(--gray);font-size:12px">ยังไม่มีรายการ</td></tr>`}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="stit" style="display:flex;justify-content:space-between;align-items:center;margin-top:20px">
+    <span>รายการกับบุคคล/กิจการที่เกี่ยวข้องกัน</span>
+    <button class="btn btn-xs btn-primary" onclick="showAddRPModal()">+ เพิ่มรายการ</button>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="notes-tbl">
+      <thead><tr>
+        <th>ชื่อ</th><th>ความสัมพันธ์</th><th>ประเภทรายการ</th><th class="num-r">จำนวนเงิน</th><th class="num-r">ยอดคงค้าง</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${rpRows.length?rpRows.map(rpRow).join('')
+          :`<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--gray);font-size:12px">ยังไม่มีรายการ</td></tr>`}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="stit" style="margin-top:20px">หมายเหตุอื่น</div>
+  <div class="fg">
+    <label class="fl">ภาระผูกพันและหนี้สินที่อาจเกิดขึ้น</label>
+    <textarea class="fc" rows="2" onchange="onNoteChange(null,'contingencies',this.value)">${esc(notes.contingencies||'')}</textarea>
+  </div>
+  <div class="fg">
+    <label class="fl">เหตุการณ์ภายหลังวันที่ในงบการเงิน</label>
+    <textarea class="fc" rows="2" onchange="onNoteChange(null,'subsequentEvents',this.value)">${esc(notes.subsequentEvents||'')}</textarea>
+  </div>
+  <div class="fg">
+    <label class="fl">หมายเหตุผู้สอบบัญชี</label>
+    <textarea class="fc" rows="2" onchange="onNoteChange(null,'auditorNote',this.value)">${esc(notes.auditorNote||'')}</textarea>
+  </div>
+  <div class="xbar">
+    <button class="btn btn-success" onclick="exportExcel()">⬇ Export Excel</button>
+    <button class="btn btn-primary" onclick="exportPDF()">📄 Export PDF</button>
+  </div>`;
+}
+
+// ===== BANK ANALYSIS TAB =====
+function renderBankTab(yd){
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const base=Object.assign(defaultBase(),yd.base||{});
+  const cf=Object.assign(defaultCF(),yd.cf||{});
+  const res=compute(draft,settings);
+  const cfRes=computeCF(base,draft,settings,cf,res);
+  const bank=computeBankability(res.pl,res.bs,res.kpi,cfRes);
+  const flags=computeRedFlags(res.pl,res.bs,res.kpi,cfRes,base);
+  const ebitda=res.pl.ebitda;
+  const ba=Object.assign(defaultBankAnalysis(),yd.bankAnalysis||{});
+  const lc=ba.loanCapacity||{};
+  const lRate=n(lc.interestRate)||0.06;
+  const lTerm=n(lc.termMonths)||60;
+  const lDSCR=n(lc.dscrTarget)||1.25;
+  const lcRes=computeLoanCapacity(ebitda,lRate,lTerm,lDSCR);
+  const scenarios=yd.scenarios||[];
+
+  const ringColor=bank.levelCls==='green'?'var(--green)':bank.levelCls==='amber'?'var(--amber)':'var(--red)';
+  const strHtml=bank.strengths.map(s=>`<li style="color:var(--green);margin-bottom:3px">✓ ${esc(s)}</li>`).join('');
+  const riskHtml=bank.risks.map(r=>`<li style="color:var(--red);margin-bottom:3px">⚠ ${esc(r)}</li>`).join('');
+  const recHtml=bank.recommendations.map(r=>`<li style="margin-bottom:4px">${esc(r)}</li>`).join('');
+
+  const flagRows=flags.map(f=>`<tr>
+    <td class="flag-${f.status}" style="padding:6px 10px;white-space:nowrap">
+      ${f.status==='ok'?'✓':f.status==='warn'?'⚠':'✕'} ${esc(f.label)}</td>
+    <td style="padding:6px 10px">${esc(f.desc)}</td>
+    <td style="padding:6px 10px;color:var(--gray);font-size:11px">${esc(f.suggest||'')}</td>
+  </tr>`).join('');
+
+  const scHtml=scenarios.length===0
+    ?`<p style="color:var(--gray);font-size:12px;margin:0">ยังไม่มี Scenario ที่บันทึก — กด "+ บันทึก Scenario ปัจจุบัน" เพื่อบันทึก</p>`
+    :scenarios.map((sc,i)=>`<div class="sc-card">
+        <div style="flex:1">
+          <div class="sc-name">${esc(sc.name)}</div>
+          <div class="sc-meta">${sc.note?esc(sc.note)+' &nbsp;|&nbsp; ':''}Rev: ${fmt(sc.pl?.totalRev)} &nbsp;|&nbsp; Net: ${fmt(sc.pl?.netIncome)} &nbsp;|&nbsp; Score: <b>${sc.score||0}</b>/100</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-xs btn-secondary" onclick="loadScenario(${i})">โหลด</button>
+          <button class="btn btn-xs btn-danger" onclick="deleteScenario(${i})">✕</button>
+        </div>
+      </div>`).join('');
+
+  return`
+  <div style="font-size:13px;color:var(--gray);margin-bottom:16px">
+    วิเคราะห์ศักยภาพสินเชื่อ — คำนวณ Real-time จากข้อมูลใน Tab B (ร่างปรับใหม่)
+  </div>
+
+  <div class="stit">Bankability Score</div>
+  <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:var(--r)">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0">
+      <div class="score-ring ${bank.levelCls}">
+        <div class="score-num">${bank.score}</div>
+        <div class="score-lbl">/ 100</div>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:${ringColor}">${bank.level}</div>
+    </div>
+    <div style="flex:1;min-width:200px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      ${bank.strengths.length?`<div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">จุดแข็ง</div>
+        <ul style="padding-left:16px;margin:0;font-size:12px">${strHtml}</ul>
+      </div>`:''}
+      ${bank.risks.length?`<div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px">ความเสี่ยง</div>
+        <ul style="padding-left:16px;margin:0;font-size:12px">${riskHtml}</ul>
+      </div>`:''}
+    </div>
+  </div>
+
+  <div class="stit">Red Flag Check</div>
+  <div style="overflow-x:auto;margin-bottom:16px">
+    <table class="flag-tbl">
+      <thead><tr>
+        <th style="width:20%">รายการ</th>
+        <th style="width:25%">สถานะ</th>
+        <th>คำแนะนำ</th>
+      </tr></thead>
+      <tbody>${flagRows}</tbody>
+    </table>
+  </div>
+
+  ${bank.recommendations.length?`
+  <div class="stit">คำแนะนำปรับโครงสร้างอัตโนมัติ</div>
+  <div style="background:var(--amber-lt);border-radius:8px;padding:12px 16px;margin-bottom:12px">
+    <ul style="padding-left:16px;margin:0;font-size:13px;color:#92400E">${recHtml}</ul>
+  </div>
+  <button class="btn btn-sm btn-amber" onclick="applyRatioSuggestions()" style="margin-bottom:20px">
+    ✨ Apply Suggestions อัตโนมัติ
+  </button>`:''}
+
+  <div class="stit">ประมาณการวงเงินกู้ที่เหมาะสม</div>
+  <div class="sp">
+    <div class="sgrid">
+      <div>
+        <span class="sl">EBITDA ปีนี้ (คำนวณ)</span>
+        <input type="text" class="fc" value="${fmtNum(ebitda)}" disabled style="color:var(--blue);font-weight:600">
+      </div>
+      <div>
+        <span class="sl">อัตราดอกเบี้ย (%/ปี)</span>
+        <input type="number" class="fc" id="lc-rate" step="0.1" min="0" max="30" value="${(lRate*100).toFixed(1)}" onchange="onLCChange()">
+      </div>
+      <div>
+        <span class="sl">ระยะเวลากู้ (เดือน)</span>
+        <input type="number" class="fc" id="lc-term" min="1" max="360" value="${lTerm}" onchange="onLCChange()">
+      </div>
+      <div>
+        <span class="sl">DSCR เป้าหมาย (เท่า)</span>
+        <input type="number" class="fc" id="lc-dscr" step="0.05" min="1" value="${lDSCR}" onchange="onLCChange()">
+      </div>
+    </div>
+    <div id="lc-result" style="margin-top:12px;padding:14px 16px;background:#EFF6FF;border-radius:8px;font-size:13px">
+      ${lcRes
+        ?`วงเงินกู้ที่แนะนำ: <b style="font-size:18px;color:var(--navy)">${fmtNum(lcRes.loanCapacity)}</b> บาท
+          &nbsp;|&nbsp; ชำระ/เดือน: <b>${fmtNum(lcRes.monthlyDS)}</b> บาท
+          &nbsp;|&nbsp; EBITDA/DSCR = ${fmtNum(lcRes.annualDS)} บาท/ปี`
+        :`กรอกพารามิเตอร์ให้ครบ หรือ EBITDA ต้องมากกว่า 0`}
+    </div>
+  </div>
+
+  <div class="stit" style="display:flex;justify-content:space-between;align-items:center;margin-top:20px">
+    <span>Multi Scenario</span>
+    <button class="btn btn-xs btn-primary" onclick="showSaveScenarioModal()">+ บันทึก Scenario ปัจจุบัน</button>
+  </div>
+  <div id="sc-list" style="margin-bottom:16px">${scHtml}</div>
+
+  <div class="xbar">
+    <button class="btn btn-success" onclick="exportExcel()">⬇ Export Excel</button>
+    <button class="btn btn-primary" onclick="exportPDF()">📄 Export PDF</button>
+  </div>`;
+}
+
+// ===== ATTACH EVENTS =====
+function attachEditorEvents(){}// events via onclick attrs
+
+// ===== EDITOR ACTIONS =====
+function goHome(){
+  S.view='dashboard';S.currentCo=null;S.currentYear=null;
+  render();
+}
+function selectYear(yr){
+  S.currentYear=yr;S.editorTab='base';
+  render();
+}
+function switchTab(tab){
+  S.editorTab=tab;
+  // Save current draft first if switching away
+  render();
+}
+function toggleStatus(){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  yd.status=yd.status==='final'?'draft':'final';
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  render();
+}
+
+function onBaseChange(field,val){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd){return;}
+  if(!yd.base)yd.base=defaultBase();
+  yd.base[field]=parseFloat(val)||0;
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  updateBaseCalcDisplay(yd.base);
+}
+
+function updateBaseCalcDisplay(base){
+  const r=computeBase(base);
+  const plEl=document.getElementById('base-pl-summary');
+  if(plEl){
+    plEl.innerHTML=`กำไรขั้นต้น: <b style="color:var(--navy)">${fmtNum(r.pl.grossProfit)}</b> &nbsp;|&nbsp; EBIT: <b style="color:var(--navy)">${fmtNum(r.pl.ebit)}</b> &nbsp;|&nbsp; กำไรก่อนภาษี: <b style="color:var(--navy)">${fmtNum(r.pl.pbt)}</b>`;
+  }
+  const bsEl=document.getElementById('base-bs-check');
+  const diff=r.bs.totalAssets-r.bs.totalLiabEq;
+  const ok=Math.abs(diff)<1;
+  if(bsEl){
+    bsEl.style.cssText=`margin:8px 0 16px;padding:10px 14px;border-radius:8px;font-size:12px;${ok?'background:var(--green-lt);color:#166534':'background:var(--red-lt);color:#991B1B'}`;
+    bsEl.innerHTML=`รวมสินทรัพย์: <b>${fmtNum(r.bs.totalAssets)}</b> &nbsp;|&nbsp; รวมหนี้สิน+ทุน: <b>${fmtNum(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp; ส่วนต่าง: <b>${fmtNum(diff)}</b>${ok?' ✓ ดุล':' ⚠ ไม่ดุล'}`;
+  }
+}
+
+function saveBase(){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  const fields=['rev','otherRev','cogs','admin','depExp','interestExp','tax','netIncome',
+    'cash','ar','loanAr','inventory','oca','deposit','ppe','intangible',
+    'ap','shortLoan','longLoan','taxPay','ocl','longLoanNC','directorLoan','capital','reBegin'];
+  if(!yd.base)yd.base=defaultBase();
+  fields.forEach(f=>{
+    const el=document.getElementById(`b-${f}`);
+    if(el)yd.base[f]=parseFloat(el.value)||0;
+  });
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  toast('บันทึกข้อมูลปีฐานแล้ว','ok');
+}
+
+function onDraftChange(field,val){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.draft)yd.draft=defaultDraft();
+  yd.draft[field]=parseFloat(val)||0;
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  updateCalcCells(yd);
+}
+
+function onSettingChange(field,val){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.settings)yd.settings=defaultSettings();
+  yd.settings[field]=val;
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  // Show/hide target tax field
+  if(field==='taxMode'){
+    const tw=document.getElementById('target-tax-wrap');
+    if(tw)tw.style.display=val==='auto'?'none':'';
+  }
+  // Collect fresh draft values from inputs
+  collectDraftInputs(yd);
+  updateCalcCells(yd);
+}
+
+function collectDraftInputs(yd){
+  const fields=['rev','otherRev','cogs','admin','depExp','interestExp',
+    'ar','loanAr','inventory','oca','deposit','ppe','intangible',
+    'ap','shortLoan','longLoan','taxPay','ocl','longLoanNC','directorLoan',
+    'capital','reBegin','cash'];
+  if(!yd.draft)yd.draft=defaultDraft();
+  fields.forEach(f=>{
+    const el=document.getElementById(`di-${f}`);
+    if(el&&!el.disabled)yd.draft[f]=parseFloat(el.value)||0;
+  });
+}
+
+function updateCalcCells(yd){
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const res=compute(draft,settings);
+  const pl=res.pl;const bs=res.bs;const kpi=res.kpi;const d=res.d;
+  const mode=settings.taxMode||'auto';
+
+  function setCV(id,val,neg=false){
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.className='cv'+(neg&&val<0?' neg':'');
+    el.textContent=fmt(val);
+  }
+  if(mode==='target-rev'){const el=document.getElementById('di-rev');if(el)el.value=d.rev.toFixed(2);}
+  else if(mode==='target-cogs'){const el=document.getElementById('di-cogs');if(el)el.value=d.cogs.toFixed(2);}
+  if(settings.cashAutoBalance){const el=document.getElementById('cv-cash');if(el)el.textContent=fmt(bs.cash);}
+
+  // P&L
+  setCV('cv-totalRev',pl.totalRev);
+  setCV('cv-grossProfit',pl.grossProfit);
+  setCV('cv-ebit',pl.ebit);
+  setCV('cv-pbt',pl.pbt);
+  setCV('cv-tax',pl.tax);
+  setCV('cv-netIncome',pl.netIncome,true);
+  // BS Assets
+  setCV('cv-curAssets',bs.currentAssets);
+  setCV('cv-ncAssets',bs.nonCurrentAssets);
+  setCV('cv-totAssets',bs.totalAssets);
+  // BS Liab
+  setCV('cv-curLiab',bs.currentLiab);
+  setCV('cv-ncLiab',bs.nonCurrentLiab);
+  setCV('cv-totLiab',bs.totalLiab);
+  // BS Equity
+  setCV('cv-netIncome2',pl.netIncome,true);
+  setCV('cv-reEnd',bs.reEnd);
+  setCV('cv-totEquity',bs.totalEquity);
+  setCV('cv-totLiabEq',bs.totalLiabEq);
+
+  const diffEl=document.getElementById('cv-diff');
+  if(diffEl){
+    diffEl.innerHTML=Math.abs(bs.diff)<1
+      ?`<span class="diff-ok">✓ ดุล (${fmt(bs.diff)})</span>`
+      :`<span class="diff-err">⚠ ไม่ดุล (${fmt(bs.diff)})</span>`;
+  }
+
+  function setKPI(id,val,unit,cls){
+    const el=document.getElementById(id);const box=document.getElementById(id+'-box');
+    if(el)el.textContent=val+unit;if(box)box.className='kpi '+cls;
+  }
+  setKPI('cv-kpi-gm',fmtPct(kpi.grossMargin),'',kpi.grossMargin>=20?'pos':kpi.grossMargin>=0?'':'neg');
+  setKPI('cv-kpi-em',fmtPct(kpi.ebitMargin),'',kpi.ebitMargin>=10?'pos':kpi.ebitMargin>=0?'':'neg');
+  setKPI('cv-kpi-nm',fmtPct(kpi.netMargin),'',kpi.netMargin>=5?'pos':kpi.netMargin>=0?'':'neg');
+  setKPI('cv-kpi-de',isFinite(kpi.de)?kpi.de.toFixed(2):'-',' เท่า',kpi.de<1?'pos':kpi.de<2?'warn':'neg');
+  setKPI('cv-kpi-dr',isFinite(kpi.debtRatio)?(kpi.debtRatio*100).toFixed(1)+'%':'','',kpi.debtRatio<0.5?'pos':kpi.debtRatio<0.7?'warn':'neg');
+  setKPI('cv-kpi-cr',isFinite(kpi.currentRatio)?kpi.currentRatio.toFixed(2):'-',' เท่า',kpi.currentRatio>=2?'pos':kpi.currentRatio>=1?'warn':'neg');
+  setKPI('cv-kpi-ic',kpi.interestCoverage!==null?kpi.interestCoverage.toFixed(1):'-',' เท่า',kpi.interestCoverage===null?'':kpi.interestCoverage>=3?'pos':kpi.interestCoverage>=1.5?'warn':'neg');
+}
+
+function autoSaveDraft(){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  collectDraftInputs(yd);
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  toast('บันทึก Draft แล้ว','ok');
+}
+
+function onCFChange(field,val){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.cf)yd.cf=defaultCF();
+  yd.cf[field]=parseFloat(val)||0;
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderCashFlowTab(yd);
+}
+
+// ===== NOTES ACTIONS =====
+function onNoteChange(section,field,val){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.notes)yd.notes=defaultNotes();
+  if(section){if(!yd.notes[section])yd.notes[section]={};yd.notes[section][field]=val;}
+  else yd.notes[field]=val;
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+}
+
+function showAddPPEModal(){
+  showModal(`
+  <div class="mh"><div class="mt">เพิ่มรายการ PPE</div><button class="mc" onclick="closeModal()">×</button></div>
+  <div class="fg"><label class="fl">ชื่อทรัพย์สิน</label><input class="fc" id="ppe-name"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="fg"><label class="fl">ราคาทุน</label><input class="fc" type="number" id="ppe-cost" step="0.01"></div>
+    <div class="fg"><label class="fl">ค่าเสื่อมราคาสะสม</label><input class="fc" type="number" id="ppe-accDep" step="0.01"></div>
+    <div class="fg"><label class="fl">อัตราค่าเสื่อม (%)</label><input class="fc" type="number" id="ppe-depRate" step="0.01"></div>
+    <div class="fg"><label class="fl">ค่าเสื่อมราคาปีนี้</label><input class="fc" type="number" id="ppe-depYear" step="0.01"></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="handleSavePPERow()">บันทึก</button>
+  </div>`);
+  setTimeout(()=>document.getElementById('ppe-name')?.focus(),50);
+}
+function handleSavePPERow(){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.notes)yd.notes=defaultNotes();
+  if(!yd.notes.ppeSchedule)yd.notes.ppeSchedule=[];
+  yd.notes.ppeSchedule.push({
+    name:document.getElementById('ppe-name')?.value||'',
+    cost:parseFloat(document.getElementById('ppe-cost')?.value)||0,
+    accDep:parseFloat(document.getElementById('ppe-accDep')?.value)||0,
+    depRate:parseFloat(document.getElementById('ppe-depRate')?.value)||0,
+    depYear:parseFloat(document.getElementById('ppe-depYear')?.value)||0
+  });
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  closeModal();
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderNotesTab(yd);
+}
+function deletePPERow(idx){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd||!yd.notes)return;
+  yd.notes.ppeSchedule.splice(idx,1);
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderNotesTab(yd);
+}
+
+function showAddRPModal(){
+  showModal(`
+  <div class="mh"><div class="mt">เพิ่มรายการผู้เกี่ยวข้อง</div><button class="mc" onclick="closeModal()">×</button></div>
+  <div class="fg"><label class="fl">ชื่อ</label><input class="fc" id="rp-name"></div>
+  <div class="fg"><label class="fl">ความสัมพันธ์</label><input class="fc" id="rp-rel" placeholder="กรรมการ, ผู้ถือหุ้น, บริษัทในเครือ"></div>
+  <div class="fg"><label class="fl">ประเภทรายการ</label><input class="fc" id="rp-tx" placeholder="เงินกู้ยืม, ค้ำประกัน, ซื้อขาย"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="fg"><label class="fl">จำนวนเงิน</label><input class="fc" type="number" id="rp-amt" step="0.01"></div>
+    <div class="fg"><label class="fl">ยอดคงค้าง</label><input class="fc" type="number" id="rp-bal" step="0.01"></div>
+  </div>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="handleSaveRPRow()">บันทึก</button>
+  </div>`);
+  setTimeout(()=>document.getElementById('rp-name')?.focus(),50);
+}
+function handleSaveRPRow(){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.notes)yd.notes=defaultNotes();
+  if(!yd.notes.relatedParties)yd.notes.relatedParties=[];
+  yd.notes.relatedParties.push({
+    name:document.getElementById('rp-name')?.value||'',
+    relation:document.getElementById('rp-rel')?.value||'',
+    txType:document.getElementById('rp-tx')?.value||'',
+    amount:parseFloat(document.getElementById('rp-amt')?.value)||0,
+    balance:parseFloat(document.getElementById('rp-bal')?.value)||0
+  });
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  closeModal();
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderNotesTab(yd);
+}
+function deleteRPRow(idx){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd||!yd.notes)return;
+  yd.notes.relatedParties.splice(idx,1);
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderNotesTab(yd);
+}
+
+// ===== BANK TAB ACTIONS =====
+function onLCChange(){
+  const rate=(parseFloat(document.getElementById('lc-rate')?.value)||6)/100;
+  const term=parseInt(document.getElementById('lc-term')?.value)||60;
+  const dscr=parseFloat(document.getElementById('lc-dscr')?.value)||1.25;
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const res=compute(draft,settings);
+  const lcRes=computeLoanCapacity(res.pl.ebitda,rate,term,dscr);
+  const el=document.getElementById('lc-result');
+  if(el){
+    el.innerHTML=lcRes
+      ?`วงเงินกู้ที่แนะนำ: <b style="font-size:18px;color:var(--navy)">${fmtNum(lcRes.loanCapacity)}</b> บาท
+        &nbsp;|&nbsp; ชำระ/เดือน: <b>${fmtNum(lcRes.monthlyDS)}</b> บาท
+        &nbsp;|&nbsp; EBITDA/DSCR = ${fmtNum(lcRes.annualDS)} บาท/ปี`
+      :`EBITDA ต้องมากกว่า 0 เพื่อคำนวณวงเงิน`;
+  }
+  if(!yd.bankAnalysis)yd.bankAnalysis=defaultBankAnalysis();
+  yd.bankAnalysis.loanCapacity={interestRate:rate,termMonths:term,dscrTarget:dscr};
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+}
+
+function applyRatioSuggestions(){
+  if(!confirm('ต้องการให้ระบบปรับตัวเลขอัตโนมัติตามคำแนะนำ?\n\n• แปลงเงินกู้กรรมการเป็นทุน (ถ้า D/E > 2)\n• ปรับอัตราภาษีเป็น 20% (ถ้าภาษีต่ำเกินไป)\n\n(Draft ปัจจุบันจะถูกปรับ — แนะนำบันทึก Scenario ก่อน)'))return;
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.draft)yd.draft=defaultDraft();
+  if(!yd.settings)yd.settings=defaultSettings();
+  const settings=Object.assign(defaultSettings(),yd.settings);
+  const res=compute(Object.assign(defaultDraft(),yd.draft),settings);
+  const kpi=res.kpi;
+  let changed=false;
+  if(kpi.de>2&&n(yd.draft.directorLoan)>0){
+    const conv=yd.draft.directorLoan;
+    yd.draft.directorLoan=0;
+    yd.draft.capital=n(yd.draft.capital)+conv;
+    toast(`แปลงเงินกู้กรรมการ ${fmtNum(conv)} บาท เป็นทุนแล้ว`,'ok');
+    changed=true;
+  }
+  if(res.pl.pbt>0&&res.pl.tax/res.pl.pbt<0.10&&settings.taxMode==='auto'){
+    yd.settings.taxRate=0.20;
+    toast('ปรับอัตราภาษีเป็น 20% แล้ว','ok');
+    changed=true;
+  }
+  if(!changed){toast('ไม่มีรายการที่ระบบแนะนำให้ปรับ','warn');return;}
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  render();
+}
+
+function showSaveScenarioModal(){
+  showModal(`
+  <div class="mh"><div class="mt">บันทึก Scenario ปัจจุบัน</div><button class="mc" onclick="closeModal()">×</button></div>
+  <div class="fg">
+    <label class="fl">ชื่อ Scenario *</label>
+    <input class="fc" id="sc-name" placeholder="Conservative / Bank / Aggressive">
+  </div>
+  <div class="fg">
+    <label class="fl">สมมติฐาน / หมายเหตุ</label>
+    <input class="fc" id="sc-note" placeholder="รายได้คงที่, ลดต้นทุน 10%">
+  </div>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="handleSaveScenario()">บันทึก</button>
+  </div>`);
+  setTimeout(()=>document.getElementById('sc-name')?.focus(),50);
+}
+
+function handleSaveScenario(){
+  const name=(document.getElementById('sc-name')?.value||'').trim();
+  if(!name){toast('กรุณากรอกชื่อ Scenario','err');return;}
+  const note=document.getElementById('sc-note')?.value||'';
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const base=Object.assign(defaultBase(),yd.base||{});
+  const cf=Object.assign(defaultCF(),yd.cf||{});
+  const res=compute(draft,settings);
+  const cfRes=computeCF(base,draft,settings,cf,res);
+  const bank=computeBankability(res.pl,res.bs,res.kpi,cfRes);
+  if(!yd.scenarios)yd.scenarios=[];
+  yd.scenarios.push({
+    name,note,
+    draft:Object.assign({},draft),
+    settings:Object.assign({},settings),
+    pl:res.pl,bs:res.bs,kpi:res.kpi,
+    score:bank.score,level:bank.level,
+    savedAt:Date.now()
+  });
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  closeModal();
+  toast(`บันทึก Scenario "${name}" แล้ว`,'ok');
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderBankTab(yd);
+}
+
+function loadScenario(idx){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd||!yd.scenarios||!yd.scenarios[idx])return;
+  const sc=yd.scenarios[idx];
+  if(!confirm(`โหลด Scenario "${sc.name}" มาแทน Draft ปัจจุบัน?\n(Draft ปัจจุบันจะถูกแทนที่ — แนะนำบันทึกก่อน)`))return;
+  yd.draft=Object.assign({},sc.draft||{});
+  if(sc.settings)yd.settings=Object.assign({},sc.settings);
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  toast(`โหลด Scenario "${sc.name}" แล้ว`,'ok');
+  S.editorTab='draft';
+  render();
+}
+
+function deleteScenario(idx){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd||!yd.scenarios)return;
+  const sc=yd.scenarios[idx];
+  if(!sc||!confirm(`ลบ Scenario "${sc.name}"?`))return;
+  yd.scenarios.splice(idx,1);
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  const el=document.getElementById('ed-tab-content');
+  if(el)el.innerHTML=renderBankTab(yd);
+}
+
+// ===== AI =====
+function showAIImportModal(){
+  const apiKey=localStorage.getItem('claude_api_key')||'';
+  showModal(`
+  <div class="mh"><div class="mt">✨ AI นำเข้าตัวเลขจากงบการเงิน</div><button class="mc" onclick="closeModal()">×</button></div>
+  ${!apiKey?`<div style="background:var(--amber-lt);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px">
+    <b>Claude API Key:</b><br>
+    <input class="fc" style="margin-top:6px" id="ai-key-input" placeholder="sk-ant-...">
+    <button class="btn btn-xs btn-primary" style="margin-top:6px" onclick="saveApiKey()">บันทึก Key</button>
+  </div>`:''}
+
+  <div style="display:flex;gap:6px;margin-bottom:14px">
+    <button class="btn btn-sm btn-secondary" id="tab-btn-file" onclick="switchAITab('file')" style="border-bottom:2px solid var(--blue);color:var(--blue)">📎 อัปโหลดไฟล์ PDF/รูป</button>
+    <button class="btn btn-sm btn-secondary" id="tab-btn-text" onclick="switchAITab('text')">📋 วางข้อความ</button>
+  </div>
+
+  <div id="ai-tab-file">
+    <div style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s"
+      id="ai-drop-zone"
+      ondragover="event.preventDefault();this.style.borderColor='var(--blue)'"
+      ondragleave="this.style.borderColor='var(--border)'"
+      ondrop="handleAIFileDrop(event)">
+      <div style="font-size:28px;margin-bottom:6px">📄</div>
+      <div style="font-size:13px;font-weight:600;color:var(--navy)">ลากไฟล์มาวางที่นี่</div>
+      <div style="font-size:11px;color:var(--gray);margin:4px 0 10px">รองรับ PDF และรูปภาพ (JPG, PNG)</div>
+      <input type="file" id="ai-file-input" accept=".pdf,image/*" style="display:none" onchange="handleAIFileSelect(this)">
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('ai-file-input').click()">เลือกไฟล์</button>
+    </div>
+    <div id="ai-file-preview" style="margin-top:10px;display:none">
+      <div style="background:#F0F4F8;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px" id="ai-file-icon">📄</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="ai-file-name"></div>
+          <div style="font-size:11px;color:var(--gray)" id="ai-file-size"></div>
+        </div>
+        <button class="btn btn-xs btn-danger" onclick="clearAIFile()">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ai-tab-text" style="display:none">
+    <div class="fg">
+      <label class="fl">วางข้อความจากงบการเงิน (หรือ OCR ผล)</label>
+      <textarea class="fc" id="ai-text" rows="7" placeholder="วางข้อความที่นี่..."></textarea>
+    </div>
+  </div>
+
+  <div id="ai-progress" style="display:none;margin-top:10px">
+    <div style="background:#F0F4F8;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--navy);display:flex;align-items:center;gap:8px">
+      <span style="animation:spin 1s linear infinite;display:inline-block">⏳</span>
+      <span id="ai-progress-txt">กำลังวิเคราะห์งบการเงิน...</span>
+    </div>
+  </div>
+
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" id="ai-run-btn" onclick="runAIImport()">✨ นำเข้าด้วย AI</button>
+  </div>`);
+}
+
+let _aiFileData=null;
+let _aiFileType=null;
+
+function switchAITab(tab){
+  document.getElementById('ai-tab-file').style.display=tab==='file'?'':'none';
+  document.getElementById('ai-tab-text').style.display=tab==='text'?'':'none';
+  document.getElementById('tab-btn-file').style.cssText=tab==='file'?'border-bottom:2px solid var(--blue);color:var(--blue)':'';
+  document.getElementById('tab-btn-text').style.cssText=tab==='text'?'border-bottom:2px solid var(--blue);color:var(--blue)':'';
+}
+
+function handleAIFileDrop(e){
+  e.preventDefault();
+  document.getElementById('ai-drop-zone').style.borderColor='var(--border)';
+  const file=e.dataTransfer.files[0];
+  if(file)loadAIFile(file);
+}
+function handleAIFileSelect(input){
+  const file=input.files[0];
+  if(file)loadAIFile(file);
+}
+function loadAIFile(file){
+  const maxMB=4.5;
+  if(file.size>maxMB*1024*1024){toast(`ไฟล์ใหญ่เกิน ${maxMB}MB กรุณาลดขนาดก่อน`,'err');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const b64=e.target.result.split(',')[1];
+    _aiFileData=b64;
+    _aiFileType=file.type||'application/pdf';
+    const prev=document.getElementById('ai-file-preview');
+    document.getElementById('ai-file-name').textContent=file.name;
+    document.getElementById('ai-file-size').textContent=(file.size/1024).toFixed(1)+' KB';
+    document.getElementById('ai-file-icon').textContent=file.type.startsWith('image')?'🖼️':'📄';
+    prev.style.display='';
+  };
+  reader.readAsDataURL(file);
+}
+function clearAIFile(){
+  _aiFileData=null;_aiFileType=null;
+  document.getElementById('ai-file-preview').style.display='none';
+  document.getElementById('ai-file-input').value='';
+}
+
+function saveApiKey(){
+  const k=(document.getElementById('ai-key-input')?.value||'').trim();
+  if(k){localStorage.setItem('claude_api_key',k);toast('บันทึก API Key แล้ว','ok');}
+}
+
+async function runAIImport(){
+  const apiKey=localStorage.getItem('claude_api_key');
+  if(!apiKey){toast('กรุณาตั้งค่า Claude API Key ก่อน','warn');return;}
+
+  const tabFile=document.getElementById('ai-tab-file');
+  const useFile=tabFile&&tabFile.style.display!=='none';
+
+  const prompt=`คุณเป็นนักบัญชีผู้เชี่ยวชาญ TFRS for NPAEs
+วิเคราะห์งบการเงินนี้และสกัดตัวเลขทั้งหมด (หน่วยบาท ไม่ต้องใส่ comma)
+ตอบเฉพาะ JSON object เท่านั้น ไม่มีข้อความอื่น:
+{"rev":0,"otherRev":0,"cogs":0,"admin":0,"depExp":0,"interestExp":0,"tax":0,"netIncome":0,"cash":0,"ar":0,"loanAr":0,"inventory":0,"oca":0,"deposit":0,"ppe":0,"intangible":0,"ap":0,"shortLoan":0,"longLoan":0,"taxPay":0,"ocl":0,"longLoanNC":0,"directorLoan":0,"capital":0,"reBegin":0}
+หมายเหตุ: rev=รายได้หลัก, otherRev=รายได้อื่น, cogs=ต้นทุนขาย, admin=ค่าใช้จ่ายบริหาร, depExp=ค่าเสื่อมราคา, interestExp=ดอกเบี้ยจ่าย, tax=ภาษีนิติบุคคล, netIncome=กำไรสุทธิ, cash=เงินสด, ar=ลูกหนี้การค้า, loanAr=ลูกหนี้เงินกู้, inventory=สินค้าคงเหลือ, oca=สินทรัพย์หมุนเวียนอื่น, deposit=เงินมัดจำ, ppe=ที่ดินอาคารอุปกรณ์สุทธิ, intangible=สินทรัพย์ไม่มีตัวตน, ap=เจ้าหนี้การค้า, shortLoan=เงินกู้ระยะสั้น, longLoan=เงินกู้ยาวส่วนหมุนเวียน, taxPay=ภาษีค้างจ่าย, ocl=หนี้สินหมุนเวียนอื่น, longLoanNC=เงินกู้ยาวไม่หมุนเวียน, directorLoan=เงินกู้กรรมการ, capital=ทุนชำระแล้ว, reBegin=กำไรสะสมต้นปี`;
+
+  let msgContent;
+  if(useFile&&_aiFileData){
+    const isImg=(_aiFileType||'').startsWith('image');
+    if(isImg){
+      msgContent=[
+        {type:'image',source:{type:'base64',media_type:_aiFileType,data:_aiFileData}},
+        {type:'text',text:prompt}
+      ];
+    }else{
+      // PDF
+      msgContent=[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:_aiFileData}},
+        {type:'text',text:prompt}
+      ];
+    }
+  }else{
+    const text=document.getElementById('ai-text')?.value||'';
+    if(!text.trim()){toast('กรุณาวางข้อความหรืออัปโหลดไฟล์ก่อน','warn');return;}
+    msgContent=[{type:'text',text:prompt+'\n\nข้อมูลงบการเงิน:\n'+text}];
+  }
+
+  // Show progress
+  const progEl=document.getElementById('ai-progress');
+  const runBtn=document.getElementById('ai-run-btn');
+  if(progEl)progEl.style.display='';
+  if(runBtn){runBtn.disabled=true;runBtn.textContent='กำลังวิเคราะห์...';}
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-5-20251001',
+        max_tokens:1000,
+        messages:[{role:'user',content:msgContent}]
+      })
+    });
+    const data=await resp.json();
+    if(data.error){toast('API Error: '+data.error.message,'err');return;}
+    const txt=data.content?.[0]?.text||'';
+    const m=txt.match(/\{[\s\S]*\}/);
+    if(!m){toast('AI ไม่สามารถแยกตัวเลขได้ — ลองตรวจสอบคุณภาพไฟล์','err');console.log('AI raw:',txt);return;}
+    autoMatch(JSON.parse(m[0]));
+    closeModal();
+    toast('นำเข้าสำเร็จ ✓ — กรุณาตรวจสอบและบันทึก','ok');
+  }catch(e){
+    toast('เกิดข้อผิดพลาด: '+e.message,'err');
+    console.error(e);
+  }finally{
+    if(progEl)progEl.style.display='none';
+    if(runBtn){runBtn.disabled=false;runBtn.textContent='✨ นำเข้าด้วย AI';}
+  }
+}
+function autoMatch(parsed){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.base)yd.base=defaultBase();
+  const fields=['rev','otherRev','cogs','admin','depExp','interestExp','tax','netIncome',
+    'cash','ar','loanAr','inventory','oca','deposit','ppe','intangible',
+    'ap','shortLoan','longLoan','taxPay','ocl','longLoanNC','directorLoan','capital','reBegin'];
+  fields.forEach(f=>{
+    if(parsed[f]!==undefined){
+      yd.base[f]=parseFloat(parsed[f])||0;
+      const el=document.getElementById(`b-${f}`);
+      if(el)el.value=yd.base[f];
+    }
+  });
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  updateBaseCalcDisplay(yd.base);
+}
+async function aiDraftNotes(){
+  const apiKey=localStorage.getItem('claude_api_key');
+  if(!apiKey){toast('กรุณาตั้งค่า Claude API Key ก่อน (ส่วน A → AI นำเข้า)','warn');return;}
+  const yd=getYearData(S.currentCo,S.currentYear);
+  const co=getCompany(S.currentCo);
+  if(!yd)return;
+  const res=compute(Object.assign(defaultDraft(),yd.draft||{}),Object.assign(defaultSettings(),yd.settings||{}));
+  toast('กำลังร่างหมายเหตุด้วย AI...','');
+  const prompt=`คุณเป็นนักบัญชีผู้เชี่ยวชาญ TFRS for NPAEs
+บริษัท: ${co?.name||''} ประเภท: ${co?.businessType||''} ปี: ${S.currentYear}
+รายได้รวม: ${res.pl.totalRev.toLocaleString()} บาท กำไรสุทธิ: ${res.pl.netIncome.toLocaleString()} บาท
+ร่างหมายเหตุประกอบงบการเงิน ตอบเป็น JSON:
+{"revenueRecognition":"...","taxPolicy":"..."}`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:600,messages:[{role:'user',content:prompt}]})
+    });
+    const data=await resp.json();
+    const m=(data.content?.[0]?.text||'').match(/\{[\s\S]*\}/);
+    if(m){
+      const parsed=JSON.parse(m[0]);
+      const yd2=getYearData(S.currentCo,S.currentYear);
+      if(!yd2.notes)yd2.notes=defaultNotes();
+      if(!yd2.notes.accountingPolicies)yd2.notes.accountingPolicies={};
+      if(parsed.revenueRecognition)yd2.notes.accountingPolicies.revenueRecognition=parsed.revenueRecognition;
+      if(parsed.taxPolicy)yd2.notes.accountingPolicies.taxPolicy=parsed.taxPolicy;
+      saveYearLocal(S.currentCo,S.currentYear,yd2);
+      const el=document.getElementById('ed-tab-content');
+      if(el)el.innerHTML=renderNotesTab(yd2);
+      toast('ร่างหมายเหตุด้วย AI แล้ว','ok');
+    }
+  }catch(e){toast('ไม่สามารถร่างได้','err');console.error(e);}
+}
+
+function fillFromPrevYear(){
+  const prevYr=getPrevYear(S.currentCo,S.currentYear);
+  if(!prevYr){toast('ไม่มีข้อมูลปีก่อนหน้า','warn');return;}
+  const prevData=getYearData(S.currentCo,prevYr);
+  if(!prevData){toast('ไม่พบข้อมูลปี '+prevYr,'warn');return;}
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  // Copy prev year's base (or draft if no base) to current year's base
+  const src=prevData.base||defaultBase();
+  if(!yd.base)yd.base=defaultBase();
+  Object.keys(src).forEach(k=>{yd.base[k]=src[k];});
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  toast(`ดึงข้อมูลปี ${prevYr} มาเป็นปีฐานแล้ว`,'ok');
+  render();
+}
+
+// ===== MODALS =====
+function showAddCompanyModal(){
+  showModal(`
+  <div class="mh"><div class="mt">เพิ่มบริษัทใหม่</div><button class="mc" onclick="closeModal()">×</button></div>
+  <div class="fg"><label class="fl">ชื่อบริษัท *</label><input class="fc" id="m-name" placeholder="บริษัท สกุลเบญจมาศ จำกัด"></div>
+  <div class="fg"><label class="fl">เลขทะเบียนนิติบุคคล</label><input class="fc" id="m-taxId" placeholder="0545561000182"></div>
+  <div class="fg"><label class="fl">ที่อยู่</label><textarea class="fc" id="m-address" rows="2" placeholder="เลขที่ 151 หมู่ 5 ต.น้ำรัด อ.หนองม่วงไข่ จ.แพร่"></textarea></div>
+  <div class="fg"><label class="fl">ชื่อกรรมการ</label><input class="fc" id="m-director" placeholder="นางสาวปรีญาพัชร สิริโสภีหิรัญ"></div>
+  <div class="fg"><label class="fl">ประเภทธุรกิจ</label><input class="fc" id="m-btype" placeholder="บริการรับเหมาก่อสร้าง"></div>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="handleSaveCompany()">บันทึก</button>
+  </div>`);
+  setTimeout(()=>document.getElementById('m-name')?.focus(),50);
+}
+
+function showEditCompanyModal(cId){
+  const c=getCompany(cId);
+  if(!c)return;
+  showModal(`
+  <div class="mh"><div class="mt">แก้ไขข้อมูลบริษัท</div><button class="mc" onclick="closeModal()">×</button></div>
+  <input type="hidden" id="m-cid" value="${cId}">
+  <div class="fg"><label class="fl">ชื่อบริษัท *</label><input class="fc" id="m-name" value="${esc(c.name||'')}"></div>
+  <div class="fg"><label class="fl">เลขทะเบียนนิติบุคคล</label><input class="fc" id="m-taxId" value="${esc(c.taxId||'')}"></div>
+  <div class="fg"><label class="fl">ที่อยู่</label><textarea class="fc" id="m-address" rows="2">${esc(c.address||'')}</textarea></div>
+  <div class="fg"><label class="fl">ชื่อกรรมการ</label><input class="fc" id="m-director" value="${esc(c.director||'')}"></div>
+  <div class="fg"><label class="fl">ประเภทธุรกิจ</label><input class="fc" id="m-btype" value="${esc(c.businessType||'')}"></div>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="handleSaveCompany(true)">บันทึก</button>
+  </div>`);
+}
+
+function handleSaveCompany(isEdit=false){
+  const name=(document.getElementById('m-name')?.value||'').trim();
+  if(!name){toast('กรุณากรอกชื่อบริษัท','err');return;}
+  const cId=isEdit?document.getElementById('m-cid')?.value:uid();
+  const c={
+    id:cId,
+    name,
+    taxId:(document.getElementById('m-taxId')?.value||'').trim(),
+    address:(document.getElementById('m-address')?.value||'').trim(),
+    director:(document.getElementById('m-director')?.value||'').trim(),
+    businessType:(document.getElementById('m-btype')?.value||'').trim(),
+    createdAt:isEdit?getCompany(cId)?.createdAt:Date.now()
+  };
+  saveCompanyLocal(c);
+  fbSaveCompany(c);
+  closeModal();
+  toast(isEdit?'แก้ไขข้อมูลแล้ว':'เพิ่มบริษัทแล้ว','ok');
+  render();
+}
+
+function showAddYearModal(cId){
+  const co=getCompany(cId);
+  const existYrs=getAllYears(cId);
+  const thisYear=2567+Math.floor((Date.now()-new Date('2024-01-01').getTime())/(365.25*24*3600*1000));
+  showModal(`
+  <div class="mh"><div class="mt">เพิ่มปีสำหรับ ${esc(co?.name||'')}</div><button class="mc" onclick="closeModal()">×</button></div>
+  <input type="hidden" id="m-co-id" value="${cId}">
+  <div class="fg">
+    <label class="fl">ปี พ.ศ. *</label>
+    <input class="fc" type="number" id="m-year" value="${thisYear}" min="2550" max="2600">
+  </div>
+  ${existYrs.length>0?`<div style="font-size:12px;color:var(--gray);margin-bottom:12px">ปีที่มีอยู่: ${existYrs.join(', ')}</div>`:''}
+  <div class="fg">
+    <label class="fl">คัดลอกจากปีก่อน</label>
+    <select class="fc" id="m-copy-yr">
+      <option value="">— ไม่คัดลอก (เริ่มใหม่) —</option>
+      ${existYrs.map(y=>`<option value="${y}">ปี ${y}</option>`).join('')}
+    </select>
+  </div>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-primary" onclick="handleSaveYear()">เพิ่มปี</button>
+  </div>`);
+  setTimeout(()=>document.getElementById('m-year')?.focus(),50);
+}
+
+function handleSaveYear(){
+  const cId=document.getElementById('m-co-id')?.value;
+  const yr=document.getElementById('m-year')?.value?.trim();
+  const copyFrom=document.getElementById('m-copy-yr')?.value;
+  if(!yr){toast('กรุณากรอกปี','err');return;}
+  if(getYearData(cId,yr)){toast('ปี '+yr+' มีอยู่แล้ว','warn');return;}
+  let newData={year:yr,status:'draft',base:defaultBase(),draft:defaultDraft(),settings:defaultSettings(),cf:defaultCF(),notes:defaultNotes(),bankAnalysis:defaultBankAnalysis(),scenarios:defaultScenarios(),reportSettings:defaultReportSettings(),updatedAt:Date.now()};
+  if(copyFrom){
+    const prev=getYearData(cId,copyFrom);
+    if(prev){
+      // Copy draft as new base, reset draft
+      newData.base=Object.assign({},prev.draft||prev.base||{});
+      // Also copy settings
+      newData.settings=Object.assign({},prev.settings||defaultSettings());
+    }
+  }
+  saveYearLocal(cId,yr,newData);
+  fbSaveYear(cId,yr,newData);
+  closeModal();
+  toast('เพิ่มปี '+yr+' แล้ว','ok');
+  if(S.view==='editor'&&S.currentCo===cId){
+    S.currentYear=yr;S.editorTab='base';
+  }
+  render();
+}
+
+function confirmDeleteCompany(cId){
+  const c=getCompany(cId);
+  showModal(`
+  <div class="mh"><div class="mt" style="color:var(--red)">ลบบริษัท</div><button class="mc" onclick="closeModal()">×</button></div>
+  <p style="margin-bottom:20px">แน่ใจหรือไม่ว่าต้องการลบ <b>${esc(c?.name||'')}</b>?<br>
+  <span style="font-size:12px;color:var(--gray)">ข้อมูลทั้งหมดของบริษัทนี้จะถูกลบออก</span></p>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+    <button class="btn btn-danger" onclick="handleDeleteCompany('${cId}')">ยืนยันการลบ</button>
+  </div>`);
+}
+function handleDeleteCompany(cId){
+  deleteCompanyLocal(cId);
+  fbDeleteCompany(cId);
+  closeModal();
+  toast('ลบบริษัทแล้ว','ok');
+  if(S.currentCo===cId){S.view='dashboard';S.currentCo=null;S.currentYear=null;}
+  render();
+}
+
+// ===== VALIDATION =====
+let _pendingExportFn=null;
+function proceedExport(){closeModal();if(_pendingExportFn){const f=_pendingExportFn;_pendingExportFn=null;f();}}
+
+function validateBeforeExport(){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  const co=getCompany(S.currentCo);
+  if(!yd||!co)return[];
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const base=Object.assign(defaultBase(),yd.base||{});
+  const res=compute(draft,settings);
+  const bs=res.bs;const pl=res.pl;const kpi=res.kpi;
+  const checks=[];
+  function chk(label,ok,isWarn,msg){checks.push({label,status:ok?'ok':isWarn?'warn':'err',msg:ok?'ผ่าน':msg});}
+  chk('ชื่อบริษัท',!!co.name,false,'กรุณากรอกชื่อบริษัท');
+  chk('ปีที่เลือก',!!S.currentYear,false,'ไม่พบปีที่เลือก');
+  chk('รายได้ปีฐาน',n(base.rev)>0||n(base.otherRev)>0,true,'ยังไม่ได้กรอกรายได้ปีฐาน');
+  chk('งบดุลปีฐาน',n(base.capital)>0||n(base.cash)>0,true,'ยังไม่ได้กรอกงบดุลปีฐาน');
+  chk('รายได้ร่างปรับใหม่',n(draft.rev)>0||n(draft.otherRev)>0,true,'ยังไม่ได้กรอกรายได้ร่างปรับใหม่');
+  chk('งบดุลสมดุล',Math.abs(bs.diff)<1,Math.abs(bs.diff)<=100,
+    Math.abs(bs.diff)<=100?`ส่วนต่าง ${fmtNum(bs.diff)} บาท (เล็กน้อย)`:`ส่วนต่าง ${fmtNum(bs.diff)} บาท — ต้องแก้ก่อน`);
+  chk('เงินสดไม่ติดลบ',bs.cash>=0,false,`เงินสด ${fmtNum(bs.cash)} บาท — ติดลบ ธนาคารไม่ผ่าน`);
+  chk('กำไรสุทธิ',pl.netIncome>=0,true,`กำไรสุทธิ ${fmtNum(pl.netIncome)} บาท — ติดลบ`);
+  if(pl.pbt>0){
+    const tp=pl.tax/pl.pbt;
+    chk('อัตราภาษีสมเหตุผล',tp>=0.10,tp>=0.05,
+      tp<0.05?`ภาษีเพียง ${(tp*100).toFixed(1)}% ของ PBT — ธนาคารตั้งคำถาม`:`ภาษี ${(tp*100).toFixed(1)}% ค่อนข้างต่ำ`);
+  }
+  chk('Current Ratio ≥ 1',kpi.currentRatio>=1,kpi.currentRatio<1.5,`Current Ratio ${kpi.currentRatio.toFixed(2)}`);
+  chk('D/E Ratio ≤ 3',kpi.de<=3,kpi.de>2,`D/E ${kpi.de.toFixed(2)} — สูงเกินมาตรฐาน`);
+  chk('ข้อมูลบริษัทครบ',!!(co.taxId&&co.director),true,'ยังไม่มีเลขทะเบียน/ชื่อกรรมการ');
+  return checks;
+}
+
+function showValidationModal(proceedFn){
+  _pendingExportFn=proceedFn;
+  const checks=validateBeforeExport();
+  const errCount=checks.filter(c=>c.status==='err').length;
+  const warnCount=checks.filter(c=>c.status==='warn').length;
+  const rows=checks.map(c=>`<tr>
+    <td style="padding:5px 10px;white-space:nowrap;color:${c.status==='ok'?'var(--green)':c.status==='warn'?'var(--amber)':'var(--red)'};font-weight:600;font-size:12px">
+      ${c.status==='ok'?'✓':c.status==='warn'?'⚠':'✕'} ${c.label}</td>
+    <td style="padding:5px 10px;font-size:12px;color:var(--gray)">${c.msg||''}</td>
+  </tr>`).join('');
+  const summaryBg=errCount>0?'var(--red-lt)':warnCount>0?'var(--amber-lt)':'var(--green-lt)';
+  const summaryColor=errCount>0?'#991B1B':warnCount>0?'#92400E':'#166534';
+  const summaryMsg=errCount===0&&warnCount===0?'ตรวจสอบผ่านทุกรายการ — พร้อม Export'
+    :(errCount>0?`พบ ${errCount} ข้อผิดพลาด`:'')+(errCount>0&&warnCount>0?' / ':'')+(warnCount>0?`${warnCount} คำเตือน`:'');
+  showModal(`
+  <div class="mh"><div class="mt">ตรวจสอบก่อน Export</div><button class="mc" onclick="closeModal()">×</button></div>
+  <div style="background:${summaryBg};padding:10px 14px;border-radius:8px;color:${summaryColor};font-weight:600;font-size:13px;margin-bottom:12px">
+    ${errCount>0?'✕':warnCount>0?'⚠':'✓'} ${summaryMsg}
+  </div>
+  <div style="overflow-x:auto;margin-bottom:16px">
+    <table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table>
+  </div>
+  <div class="mf">
+    <button class="btn btn-secondary" onclick="closeModal()">← กลับแก้ไข</button>
+    <button class="btn ${errCount>0?'btn-danger':'btn-primary'}" onclick="proceedExport()">
+      ${errCount>0?'Export ต่อไป (มีข้อผิดพลาด)':'Export'}
+    </button>
+  </div>`);
+}
+
+// ===== EXCEL EXPORT =====
+function exportComparativeExcel(){
+  const co=getCompany(S.currentCo);
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd){toast('ไม่มีข้อมูล','err');return;}
+  const prevYr=getPrevYear(S.currentCo,S.currentYear);
+  if(!prevYr){toast('ไม่มีข้อมูลปีก่อนหน้า','warn');return;}
+  const prevYd=getYearData(S.currentCo,prevYr);
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const res=compute(draft,settings);
+  const prevBase=Object.assign(defaultBase(),prevYd?.base||{});
+  const pr=computeBase(prevBase);
+  const yr=S.currentYear;const cn=co?.name||'';
+  const wb=XLSX.utils.book_new();
+  const plData=[[cn],['งบกำไรขาดทุนเบ็ดเสร็จ — เปรียบเทียบ'],[],
+    ['รายการ',yr,prevYr],
+    ['รายได้จากการขาย/รับเหมา',res.d.rev,prevBase.rev],
+    ['รายได้อื่น',res.d.otherRev,prevBase.otherRev],
+    ['รวมรายได้',res.pl.totalRev,pr.pl.totalRev],
+    ['ต้นทุนขาย',res.d.cogs,prevBase.cogs],
+    ['ค่าใช้จ่ายบริหาร',res.d.admin,prevBase.admin],
+    ['กำไรขั้นต้น',res.pl.grossProfit,pr.pl.grossProfit],
+    ['ค่าเสื่อมราคา',res.d.depExp,prevBase.depExp],
+    ['EBIT',res.pl.ebit,pr.pl.ebit],
+    ['ดอกเบี้ยจ่าย',res.d.interestExp,prevBase.interestExp],
+    ['กำไรก่อนภาษี (PBT)',res.pl.pbt,pr.pl.pbt],
+    ['ภาษีเงินได้',res.pl.tax,pr.pl.tax],
+    ['กำไรสุทธิ',res.pl.netIncome,pr.pl.netIncome],
+  ];
+  const ws1=XLSX.utils.aoa_to_sheet(plData);ws1['!cols']=[{wch:35},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws1,'P&L เปรียบเทียบ');
+  const bsData=[[cn],['งบฐานะการเงิน — เปรียบเทียบ'],[],
+    ['รายการ',yr,prevYr],
+    ['สินทรัพย์หมุนเวียน','',''],
+    ['  เงินสด',res.bs.cash,prevBase.cash],
+    ['  ลูกหนี้การค้า',res.d.ar,prevBase.ar],
+    ['  สินค้าคงเหลือ',res.d.inventory,prevBase.inventory],
+    ['  สินทรัพย์หมุนเวียนอื่น',res.d.oca,prevBase.oca],
+    ['รวมสินทรัพย์หมุนเวียน',res.bs.currentAssets,pr.bs.currentAssets],
+    ['ที่ดิน อาคาร อุปกรณ์-สุทธิ',res.d.ppe,prevBase.ppe],
+    ['สินทรัพย์ไม่มีตัวตน',res.d.intangible,prevBase.intangible],
+    ['รวมสินทรัพย์',res.bs.totalAssets,pr.bs.totalAssets],[],
+    ['หนี้สินหมุนเวียน','',''],
+    ['  เจ้าหนี้การค้า',res.d.ap,prevBase.ap],
+    ['  เงินกู้ระยะสั้น',res.d.shortLoan,prevBase.shortLoan],
+    ['รวมหนี้สินหมุนเวียน',res.bs.currentLiab,pr.bs.currentLiab],
+    ['หนี้สินไม่หมุนเวียน','',''],
+    ['  เงินกู้ระยะยาว-ไม่หมุนเวียน',res.d.longLoanNC,prevBase.longLoanNC],
+    ['  เงินกู้กรรมการ',res.d.directorLoan,prevBase.directorLoan],
+    ['รวมหนี้สินไม่หมุนเวียน',res.bs.nonCurrentLiab,pr.bs.nonCurrentLiab],
+    ['รวมหนี้สิน',res.bs.totalLiab,pr.bs.totalLiab],
+    ['รวมส่วนผู้ถือหุ้น',res.bs.totalEquity,pr.bs.totalEquity],
+    ['รวมหนี้สินและทุน',res.bs.totalLiabEq,pr.bs.totalLiabEq],
+  ];
+  const ws2=XLSX.utils.aoa_to_sheet(bsData);ws2['!cols']=[{wch:35},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws2,'BS เปรียบเทียบ');
+  XLSX.writeFile(wb,`ProForma_Comparative_${cn}_${yr}.xlsx`);
+  toast('Export Comparative Excel แล้ว','ok');
+}
+
+function exportExcel(){
+  const co=getCompany(S.currentCo);
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd){toast('ไม่มีข้อมูล','err');return;}
+  const checks=validateBeforeExport();
+  if(checks.some(c=>c.status!=='ok')){showValidationModal(()=>_doExportExcel(co,yd));return;}
+  _doExportExcel(co,yd);
+}
+function _doExportExcel(co,yd){
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const base=Object.assign(defaultBase(),yd.base||{});
+  const res=compute(draft,settings);
+  const baseRes=computeBase(base);
+  const pl=res.pl;const bs=res.bs;const kpi=res.kpi;
+  const d=res.d;
+  const bpl=baseRes.pl;const bbs=baseRes.bs;
+  const yr=S.currentYear;
+  const cn=co?.name||'';
+
+  const wb=XLSX.utils.book_new();
+  const N=v=>v||0;
+
+  // Sheet 1: P&L
+  const ws1=XLSX.utils.aoa_to_sheet([
+    [cn],['งบกำไรขาดทุนเบ็ดเสร็จ'],[`สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}`],[],
+    ['รายการ','ร่างปรับใหม่','ปีฐาน'],
+    ['รายได้จากการขาย/รับเหมาก่อสร้าง',N(d.rev),N(base.rev)],
+    ['รายได้อื่น',N(d.otherRev),N(base.otherRev)],
+    ['รวมรายได้',pl.totalRev,bpl.totalRev],
+    ['ต้นทุนขาย/ต้นทุนก่อสร้าง',N(d.cogs),N(base.cogs)],
+    ['ค่าใช้จ่ายในการบริหาร',N(d.admin),N(base.admin)],
+    ['กำไรขั้นต้น',pl.grossProfit,bpl.grossProfit],
+    ['ค่าเสื่อมราคา',N(d.depExp),N(base.depExp)],
+    ['EBIT',pl.ebit,bpl.ebit],
+    ['ดอกเบี้ยจ่าย',N(d.interestExp),N(base.interestExp)],
+    ['กำไรก่อนหักภาษี (PBT)',pl.pbt,bpl.pbt],
+    ['ภาษีเงินได้นิติบุคคล',pl.tax,bpl.tax],
+    ['กำไรสุทธิ',pl.netIncome,bpl.netIncome],
+  ]);
+  ws1['!cols']=[{wch:35},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws1,'งบกำไรขาดทุน');
+
+  // Sheet 2: Balance Sheet
+  const ws2=XLSX.utils.aoa_to_sheet([
+    [cn],['งบฐานะการเงิน'],[`ณ วันที่ 31 ธันวาคม ${yr}`],[],
+    ['รายการ','ร่างปรับใหม่','ปีฐาน'],
+    ['สินทรัพย์หมุนเวียน','',''],
+    ['  เงินสด',bs.cash,N(base.cash)],
+    ['  ลูกหนี้การค้า',N(d.ar),N(base.ar)],
+    ['  ลูกหนี้เงินกู้',N(d.loanAr),N(base.loanAr)],
+    ['  สินค้าคงเหลือ',N(d.inventory),N(base.inventory)],
+    ['  สินทรัพย์หมุนเวียนอื่น',N(d.oca),N(base.oca)],
+    ['  เงินมัดจำ/เงินประกัน',N(d.deposit),N(base.deposit)],
+    ['รวมสินทรัพย์หมุนเวียน',bs.currentAssets,bbs.currentAssets],
+    ['สินทรัพย์ไม่หมุนเวียน','',''],
+    ['  ที่ดิน อาคาร อุปกรณ์-สุทธิ',N(d.ppe),N(base.ppe)],
+    ['  สินทรัพย์ไม่มีตัวตน',N(d.intangible),N(base.intangible)],
+    ['รวมสินทรัพย์ไม่หมุนเวียน',bs.nonCurrentAssets,bbs.nonCurrentAssets],
+    ['รวมสินทรัพย์',bs.totalAssets,bbs.totalAssets],[],
+    ['หนี้สินหมุนเวียน','',''],
+    ['  เจ้าหนี้การค้า',N(d.ap),N(base.ap)],
+    ['  เงินกู้ระยะสั้น',N(d.shortLoan),N(base.shortLoan)],
+    ['  เงินกู้ระยะยาว-ส่วนถึงกำหนด 1 ปี',N(d.longLoan),N(base.longLoan)],
+    ['  ภาษีค้างจ่าย',N(d.taxPay),N(base.taxPay)],
+    ['  หนี้สินหมุนเวียนอื่น',N(d.ocl),N(base.ocl)],
+    ['รวมหนี้สินหมุนเวียน',bs.currentLiab,bbs.currentLiab],
+    ['หนี้สินไม่หมุนเวียน','',''],
+    ['  เงินกู้ระยะยาว-ส่วนไม่หมุนเวียน',N(d.longLoanNC),N(base.longLoanNC)],
+    ['  เงินกู้กรรมการ/ผู้ถือหุ้น',N(d.directorLoan),N(base.directorLoan)],
+    ['รวมหนี้สินไม่หมุนเวียน',bs.nonCurrentLiab,bbs.nonCurrentLiab],
+    ['รวมหนี้สิน',bs.totalLiab,bbs.totalLiab],
+    ['ส่วนของผู้ถือหุ้น','',''],
+    ['  ทุนชำระแล้ว',N(d.capital),N(base.capital)],
+    ['  กำไรสะสมต้นปี',N(d.reBegin),N(base.reBegin)],
+    ['  กำไรสุทธิปีนี้',pl.netIncome,bpl.netIncome],
+    ['รวมส่วนผู้ถือหุ้น',bs.totalEquity,bbs.totalEquity],
+    ['รวมหนี้สินและส่วนผู้ถือหุ้น',bs.totalLiabEq,bbs.totalLiabEq],
+    ['ส่วนต่าง (ควรเป็น 0)',bs.diff,bbs.totalAssets-bbs.totalLiabEq],
+  ]);
+  ws2['!cols']=[{wch:35},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws2,'งบฐานะการเงิน');
+
+  // Sheet 3: Ratios
+  const bkpi2={
+    grossMargin:bpl.totalRev?bpl.grossProfit/bpl.totalRev*100:0,
+    ebitMargin:bpl.totalRev?bpl.ebit/bpl.totalRev*100:0,
+    netMargin:bpl.totalRev?bpl.netIncome/bpl.totalRev*100:0,
+    de:bbs.totalEquity?bbs.totalLiab/bbs.totalEquity:0,
+    debtRatio:bbs.totalAssets?bbs.totalLiab/bbs.totalAssets:0,
+    currentRatio:bbs.currentLiab?bbs.currentAssets/bbs.currentLiab:0,
+    interestCoverage:N(base.interestExp)?bpl.ebit/N(base.interestExp):null,
+  };
+  const ws3=XLSX.utils.aoa_to_sheet([
+    [cn],['อัตราส่วนทางการเงิน'],[`ปี ${yr}`],[],
+    ['รายการ','ร่างปรับใหม่','ปีฐาน'],
+    ['Gross Margin (%)',kpi.grossMargin,bkpi2.grossMargin],
+    ['EBIT Margin (%)',kpi.ebitMargin,bkpi2.ebitMargin],
+    ['Net Margin (%)',kpi.netMargin,bkpi2.netMargin],
+    ['D/E Ratio',kpi.de,bkpi2.de],
+    ['Debt Ratio',kpi.debtRatio,bkpi2.debtRatio],
+    ['Current Ratio',kpi.currentRatio,bkpi2.currentRatio],
+    ['Interest Coverage',kpi.interestCoverage??'-',bkpi2.interestCoverage??'-'],
+  ]);
+  ws3['!cols']=[{wch:35},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws3,'อัตราส่วน');
+
+  // Sheet 4: Cash Flow
+  const ydCF=Object.assign(defaultCF(),yd.cf||{});
+  const cfRes=computeCF(base,draft,settings,ydCF,res);
+  const Z=v=>v||0;
+  const ws4=XLSX.utils.aoa_to_sheet([
+    [cn],['งบกระแสเงินสด (วิธีทางอ้อม)'],[`สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}`],[],
+    ['รายการ',yr],
+    ['กระแสเงินสดจากกิจกรรมดำเนินงาน',''],
+    ['  กำไรสุทธิ',Z(cfRes.netIncome)],
+    ['  ค่าเสื่อมราคา',Z(cfRes.dep)],
+    ['  ลูกหนี้การค้า (เพิ่ม)/ลด',Z(-cfRes.dAR)],
+    ['  ลูกหนี้เงินกู้ (เพิ่ม)/ลด',Z(-cfRes.dLoanAR)],
+    ['  สินค้าคงเหลือ (เพิ่ม)/ลด',Z(-cfRes.dInventory)],
+    ['  สินทรัพย์หมุนเวียนอื่น (เพิ่ม)/ลด',Z(-cfRes.dOCA)],
+    ['  เงินมัดจำ (เพิ่ม)/ลด',Z(-cfRes.dDeposit)],
+    ['  เจ้าหนี้การค้า เพิ่ม/(ลด)',Z(cfRes.dAP)],
+    ['  ภาษีค้างจ่าย เพิ่ม/(ลด)',Z(cfRes.dTaxPay)],
+    ['  หนี้สินอื่น เพิ่ม/(ลด)',Z(cfRes.dOCL)],
+    ['  จ่ายดอกเบี้ย',Z(cfRes.interestPaid)],
+    ['เงินสดสุทธิจากกิจกรรมดำเนินงาน',Z(cfRes.opCF)],[],
+    ['กระแสเงินสดจากกิจกรรมลงทุน',''],
+    ['  จ่ายซื้อ/รับจาก PPE',Z(cfRes.invCF)],
+    ['เงินสดสุทธิจากกิจกรรมลงทุน',Z(cfRes.invCF)],[],
+    ['กระแสเงินสดจากกิจกรรมจัดหาเงิน',''],
+    ['  รับเพิ่มทุน',Z(cfRes.dCapital)],
+    ['  รับเงินกู้ระยะยาว',Z(cfRes.loanProceeds)],
+    ['  ชำระคืนเงินกู้ระยะยาว',Z(cfRes.loanRepayment)],
+    ['  เงินกู้ระยะสั้น เพิ่ม/(ลด)',Z(cfRes.dShortLoan)],
+    ['  เงินกู้กรรมการ เพิ่ม/(ลด)',Z(cfRes.dDirectorLoan)],
+    ['  จ่ายเงินปันผล',Z(cfRes.divPaid)],
+    ['เงินสดสุทธิจากกิจกรรมจัดหาเงิน',Z(cfRes.finCF)],[],
+    ['เงินสดเพิ่ม (ลด) สุทธิสำหรับปี',Z(cfRes.netCF)],
+    ['เงินสดต้นปี',Z(cfRes.beginCash)],
+    ['เงินสดปลายปี',Z(cfRes.endCash)],
+  ]);
+  ws4['!cols']=[{wch:38},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws4,'งบกระแสเงินสด');
+
+  // Sheet 5: PPE Schedule (if data exists)
+  const notes=yd.notes||defaultNotes();
+  if((notes.ppeSchedule||[]).length>0){
+    const ppeRows=[['รายการ','ราคาทุน','ค่าเสื่อมสะสม','มูลค่าสุทธิ','อัตรา%','ค่าเสื่อมปีนี้']];
+    notes.ppeSchedule.forEach(r=>{ppeRows.push([r.name,N(r.cost),N(r.accDep),N(r.cost)-N(r.accDep),N(r.depRate),N(r.depYear)]);});
+    const ws5=XLSX.utils.aoa_to_sheet([[cn],['ตารางที่ดิน อาคาร อุปกรณ์'],[`ณ วันที่ 31 ธันวาคม ${yr}`],[],...ppeRows]);
+    ws5['!cols']=[{wch:28},{wch:16},{wch:16},{wch:16},{wch:10},{wch:16}];
+    XLSX.utils.book_append_sheet(wb,ws5,'PPE Schedule');
+  }
+
+  // Sheet 6: Related Parties (if data exists)
+  if((notes.relatedParties||[]).length>0){
+    const rpRows=[['ชื่อ','ความสัมพันธ์','ประเภทรายการ','จำนวนเงิน','ยอดคงค้าง']];
+    notes.relatedParties.forEach(r=>{rpRows.push([r.name,r.relation,r.txType,N(r.amount),N(r.balance)]);});
+    const ws6=XLSX.utils.aoa_to_sheet([[cn],['รายการกับผู้เกี่ยวข้อง'],[`ปี ${yr}`],[],...rpRows]);
+    ws6['!cols']=[{wch:25},{wch:18},{wch:22},{wch:16},{wch:16}];
+    XLSX.utils.book_append_sheet(wb,ws6,'Related Parties');
+  }
+
+  // Sheet 7: Accounting Policies
+  const pol=notes.accountingPolicies||{};
+  const ws7=XLSX.utils.aoa_to_sheet([
+    [cn],['นโยบายการบัญชีที่สำคัญ'],[`ปี ${yr}`],[],
+    ['การรับรู้รายได้',pol.revenueRecognition||''],
+    ['วิธีคิดมูลค่าสินค้าคงเหลือ',pol.inventoryMethod||'FIFO'],
+    ['วิธีคำนวณค่าเสื่อมราคา',pol.ppeDepMethod||'SL'],
+    ['นโยบายภาษีเงินได้',pol.taxPolicy||''],
+  ]);
+  ws7['!cols']=[{wch:32},{wch:50}];
+  XLSX.utils.book_append_sheet(wb,ws7,'นโยบายการบัญชี');
+
+  XLSX.writeFile(wb,`ProForma_${cn}_${yr}.xlsx`);
+  toast('Export Excel แล้ว','ok');
+}
+
+// ===== PDF EXPORT =====
+async function exportPDF(){
+  const co=getCompany(S.currentCo);
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd){toast('ไม่มีข้อมูล','err');return;}
+  const checks=validateBeforeExport();
+  if(checks.some(c=>c.status!=='ok')){showValidationModal(()=>exportPDF());return;}
+  await _doExportPDF(co,yd);
+}
+async function _doExportPDF(co,yd){
+  const settings=Object.assign(defaultSettings(),yd.settings||{});
+  const draft=Object.assign(defaultDraft(),yd.draft||{});
+  const base=Object.assign(defaultBase(),yd.base||{});
+  const res=compute(draft,settings);
+  const baseRes=computeBase(base);
+
+  // Get previous year data if available
+  const prevYr=getPrevYear(S.currentCo,S.currentYear);
+  let prevData=null;
+  if(prevYr){
+    const pyd=getYearData(S.currentCo,prevYr);
+    if(pyd){
+      const pb=Object.assign(defaultBase(),pyd.base||pyd.draft||{});
+      const pr=computeBase(pb);
+      prevData={year:prevYr,base:pb,pl:pr.pl,bs:pr.bs};
+    }
+  }
+
+  const cfInput=Object.assign(defaultCF(),yd.cf||{});
+  const cfCalc=computeCF(base,draft,settings,cfInput,res);
+  const payload={
+    company:co,
+    year:S.currentYear,
+    prevYear:prevYr||null,
+    current:{
+      draft:res.d,
+      settings,
+      pl:res.pl,
+      bs:res.bs
+    },
+    prev:prevData,
+    cf:cfCalc
+  };
+
+  toast('กำลังสร้าง PDF...','');
+  try{
+    const resp=await fetch(PDF_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(!resp.ok)throw new Error(`Server error: ${resp.status}`);
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`ProForma_${co?.name||''}_${S.currentYear}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Export PDF แล้ว','ok');
+  }catch(e){
+    toast('ไม่สามารถสร้าง PDF ได้ — ตรวจสอบว่า server.py กำลังรันอยู่ที่ port 5055','err');
+    console.error(e);
+  }
+}
+
+// ===== INIT =====
+function init(){
+  // Load from localStorage
+  S.companies=lsGetCompanies();
+  S.companies.forEach(c=>{
+    S.years[c.id]=lsGetAllYears(c.id);
+  });
+  render();
+  initFirebase();
+}
+
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
