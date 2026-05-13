@@ -167,7 +167,7 @@ select.fc{cursor:pointer}
 /* Base form */
 .bg2{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .bfield label{display:block;font-size:11px;font-weight:600;color:var(--gray);margin-bottom:4px}
-.bfield input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);text-align:right;color:#1F2937}
+.bfield input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);text-align:right;color:#1F2937;-moz-appearance:textfield}
 .bfield input:focus{outline:none;border-color:var(--blue)}
 
 /* Sec title */
@@ -266,8 +266,8 @@ select.fc{cursor:pointer}
 
 <script>
 'use strict';
-const BUILD_TIME = '2026-05-13 15:13 (ไทย)';
-const BUILD_LABEL = 'v4.2-accountingParser';
+const BUILD_TIME = '2026-05-13 16:00 (ไทย)';
+const BUILD_LABEL = 'v4.4-accountingInput';
 
 // ===== CONFIG =====
 const FB_CFG = {
@@ -567,7 +567,7 @@ function computeBase(base){
   const ebit=ebitda-n(b.depExp);
   const pbt=ebit-n(b.interestExp);
   const tax=n(b.tax);
-  const netIncome=b.netIncome!==undefined&&b.netIncome!==0?n(b.netIncome):(pbt-tax);
+  const netIncome=(b.netIncome!==undefined&&b.netIncome!==null&&b.netIncome!==''&&String(b.netIncome).trim()!==''&&Number(b.netIncome)!==0)?n(b.netIncome):(pbt-tax);
   const reEnd=n(b.reBegin)+netIncome;
   const totalEquity=n(b.capital)+reEnd;
   const currentLiab=n(b.ap)+n(b.shortLoan)+n(b.longLoan)+n(b.taxPay)+n(b.ocl);
@@ -577,9 +577,10 @@ function computeBase(base){
   const currentAssets=n(b.cash)+n(b.ar)+n(b.loanAr)+n(b.inventory)+n(b.oca)+n(b.deposit);
   const nonCurrentAssets=n(b.ppe)+n(b.intangible);
   const totalAssets=currentAssets+nonCurrentAssets;
+  const diff=totalAssets-totalLiabEq;
   return{
     pl:{totalRev,grossProfit,ebitda,ebit,pbt,tax,netIncome},
-    bs:{cash:n(b.cash),reEnd,totalEquity,currentLiab,nonCurrentLiab,totalLiab,totalLiabEq,currentAssets,nonCurrentAssets,totalAssets}
+    bs:{cash:n(b.cash),reEnd,totalEquity,currentLiab,nonCurrentLiab,totalLiab,totalLiabEq,currentAssets,nonCurrentAssets,totalAssets,diff}
   };
 }
 
@@ -957,9 +958,13 @@ function renderEditor(){
 function renderBaseTab(yd){
   const b=Object.assign(defaultBase(),yd.base||{});
   function bf(field,label){
+    const raw=b[field];
+    const display=(raw===0||raw===undefined||raw===null)?'':(raw<0?`(${Math.abs(raw).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})})`:raw.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2}));
     return`<div class="bfield">
       <label>${label}</label>
-      <input type="number" step="0.01" id="b-${field}" value="${n(b[field])}"
+      <input type="text" inputmode="decimal" id="b-${field}" value="${display}"
+        placeholder="0.00 หรือ (ติดลบ)"
+        style="text-align:right"
         onchange="onBaseChange('${field}',this.value)">
     </div>`;
   }
@@ -1026,14 +1031,19 @@ function renderBaseTab(yd){
   <div style="font-size:11px;font-weight:700;color:var(--gray);margin:10px 0 6px;text-transform:uppercase">ส่วนของผู้ถือหุ้น</div>
   <div class="bg2">
     ${bf('capital','ทุนชำระแล้ว')}
-    ${bf('reBegin','กำไรสะสมต้นปี')}
+    ${bf('reBegin','กำไรสะสมต้นปี (ยอด ณ ต้นปีนี้ = ปลายปีก่อน)')}
   </div>
 
   <div id="base-bs-check" style="margin:8px 0 16px;padding:10px 14px;border-radius:8px;font-size:12px;${bsOk?'background:var(--green-lt);color:#166534':'background:var(--red-lt);color:#991B1B'}">
     รวมสินทรัพย์: <b>${fmtNum(r.bs.totalAssets)}</b> &nbsp;|&nbsp;
     รวมหนี้สิน+ทุน: <b>${fmtNum(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp;
     ส่วนต่าง: <b>${fmtNum(diff)}</b>
-    ${bsOk?' ✓ ดุล':' ⚠ ไม่ดุล'}
+    ${bsOk?' ✓ ดุล':' \u26a0 ไม่ดุล'}
+    ${!bsOk?`<div style="margin-top:6px;font-size:11px;opacity:.85">
+      📊 กำไรสะสมปลายปี = ต้นปี <b>${fmtNum(n(b.reBegin))}</b> + กำไรสุทธิ <b>${fmtNum(r.pl.netIncome)}</b> = <b>${fmtNum(r.bs.reEnd)}</b><br>
+      💡 ตรวจสอบ: กำไรสะสมต้นปี ควรเป็นยอดสะสมจากปีก่อน ไม่ใช่ยอดปลายปีนี้<br>
+      หนี้สินรวม <b>${fmtNum(r.bs.totalLiab)}</b> + ส่วนของผู้ถือหุ้น <b>${fmtNum(r.bs.totalEquity)}</b> = <b>${fmtNum(r.bs.totalLiabEq)}</b>
+    </div>`:''}
   </div>
   <div style="display:flex;gap:8px;justify-content:flex-end">
     <button class="btn btn-primary" onclick="saveBase()">💾 บันทึกปีฐาน</button>
@@ -1980,7 +1990,7 @@ function onBaseChange(field,val){
   const yd=getYearData(S.currentCo,S.currentYear);
   if(!yd){return;}
   if(!yd.base)yd.base=defaultBase();
-  yd.base[field]=parseFloat(val)||0;
+  yd.base[field]=parseAccountingNumber(val);
   yd.updatedAt=Date.now();
   saveYearLocal(S.currentCo,S.currentYear,yd);
   updateBaseCalcDisplay(yd.base);
@@ -1997,20 +2007,21 @@ function updateBaseCalcDisplay(base){
   const ok=Math.abs(diff)<1;
   if(bsEl){
     bsEl.style.cssText=`margin:8px 0 16px;padding:10px 14px;border-radius:8px;font-size:12px;${ok?'background:var(--green-lt);color:#166534':'background:var(--red-lt);color:#991B1B'}`;
-    bsEl.innerHTML=`รวมสินทรัพย์: <b>${fmtNum(r.bs.totalAssets)}</b> &nbsp;|&nbsp; รวมหนี้สิน+ทุน: <b>${fmtNum(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp; ส่วนต่าง: <b>${fmtNum(diff)}</b>${ok?' ✓ ดุล':' ⚠ ไม่ดุล'}`;
+    bsEl.innerHTML=`รวมสินทรัพย์: <b>${fmtNum(r.bs.totalAssets)}</b> &nbsp;|&nbsp; รวมหนี้สิน+ทุน: <b>${fmtNum(r.bs.totalLiabEq)}</b> &nbsp;|&nbsp; ส่วนต่าง: <b>${fmtNum(diff)}</b>${ok?' ✓ ดุล':' \u26a0 ไม่ดุล'}`
+      +(ok?'':` <div style="margin-top:6px;font-size:11px;opacity:.85">📊 กำไรสะสมปลายปี = ต้นปี <b>${fmtNum(n(base.reBegin))}</b> + กำไรสุทธิ <b>${fmtNum(r.pl.netIncome)}</b> = <b>${fmtNum(r.bs.reEnd)}</b><br>หนี้สินรวม <b>${fmtNum(r.bs.totalLiab)}</b> + ทุน+กำไรสะสม <b>${fmtNum(r.bs.totalEquity)}</b> = <b>${fmtNum(r.bs.totalLiabEq)}</b><br>💡 ตรวจสอบว่า reBegin = กำไรสะสมต้นปี (ปีก่อน) ไม่ใช่ยอดปลายปีนี้</div>`);
   }
 }
 
 function saveBase(){
   const yd=getYearData(S.currentCo,S.currentYear);
   if(!yd)return;
-  const fields=['rev','otherRev','cogs','admin','depExp','interestExp','tax','netIncome',
+  const fields=['rev','otherRev','cogs','sellingExp','admin','depExp','interestExp','tax','netIncome',
     'cash','ar','loanAr','inventory','oca','deposit','ppe','intangible',
     'ap','shortLoan','longLoan','taxPay','ocl','longLoanNC','directorLoan','capital','reBegin'];
   if(!yd.base)yd.base=defaultBase();
   fields.forEach(f=>{
     const el=document.getElementById(`b-${f}`);
-    if(el)yd.base[f]=parseFloat(el.value)||0;
+    if(el)yd.base[f]=parseAccountingNumber(el.value);
   });
   yd.updatedAt=Date.now();
   saveYearLocal(S.currentCo,S.currentYear,yd);
