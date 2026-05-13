@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<style>
+@page { size: A4 portrait; margin: 20mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'TH Sarabun New', 'Sarabun', 'Arial', sans-serif; font-size: 10pt; color: #000; }
+h1 { font-size: 13pt; font-weight: bold; text-align: center; margin-bottom: 2pt; }
+h2 { font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 2pt; }
+h3 { font-size: 10pt; font-weight: bold; text-align: center; margin-bottom: 8pt; }
+.company-header { text-align: center; margin-bottom: 14pt; }
+.company-name { font-size: 13pt; font-weight: bold; }
+.stmt-title { font-size: 11pt; font-weight: bold; }
+.stmt-sub { font-size: 9.5pt; color: #333; }
+
+/* Financial Statement Table */
+.fs-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 14pt; }
+.fs-table th {
+  border-top: 1.5pt solid #000;
+  border-bottom: 1pt solid #000;
+  padding: 4pt 6pt;
+  text-align: right;
+  font-weight: bold;
+  font-size: 9pt;
+  background: #f5f5f5;
+}
+.fs-table th.left { text-align: left; }
+.fs-table th.note-col { width: 32pt; text-align: center; }
+.fs-table th.amt-col { width: 90pt; }
+.fs-table td { padding: 3pt 6pt; vertical-align: middle; }
+.fs-table td.num { text-align: right; white-space: nowrap; font-family: 'Courier New', monospace; font-size: 9pt; }
+.fs-table td.note { text-align: center; font-size: 8.5pt; color: #555; }
+.fs-table td.note-txt { text-align: center; }
+.fs-table .sec-hdr td { font-weight: bold; padding-top: 7pt; padding-bottom: 2pt; font-size: 9.5pt; }
+.fs-table .sub-hdr td { font-weight: bold; padding-left: 6pt; font-size: 9pt; color: #222; background: #f9f9f9; }
+.fs-table .ind td:first-child { padding-left: 20pt; }
+.fs-table .total { border-top: 1pt solid #000; border-bottom: 2pt double #000; font-weight: bold; }
+.fs-table .subtotal { border-top: 1pt solid #000; font-weight: bold; }
+.fs-table .grand-total { border-top: 2pt solid #000; border-bottom: 2pt solid #000; font-weight: bold; background: #f0f0f0; }
+
+/* Page break */
+.page-break { page-break-after: always; }
+.no-break { page-break-inside: avoid; }
+
+/* Section divider */
+.sec-divider { border: none; border-top: 1pt solid #ccc; margin: 12pt 0; }
+
+/* Notes */
+.note-section { margin-bottom: 10pt; }
+.note-title { font-weight: bold; font-size: 10pt; margin-bottom: 4pt; }
+.note-body { font-size: 9pt; line-height: 1.6; margin-left: 12pt; }
+.note-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin: 4pt 0; }
+.note-table th { background: #eee; padding: 3pt 6pt; text-align: right; border: 0.5pt solid #ccc; font-weight: bold; }
+.note-table th:first-child { text-align: left; }
+.note-table td { padding: 3pt 6pt; border: 0.5pt solid #ccc; text-align: right; font-family: 'Courier New', monospace; font-size: 9pt; }
+.note-table td:first-child { text-align: left; font-family: inherit; }
+
+/* Signature */
+.sig-section { margin-top: 30pt; }
+.sig-grid { display: table; width: 100%; }
+.sig-col { display: table-cell; width: 33%; text-align: center; padding-top: 24pt; }
+.sig-line { border-top: 1pt solid #000; width: 70%; margin: 0 auto 4pt; }
+.sig-name { font-size: 9pt; }
+.sig-role { font-size: 8.5pt; color: #444; }
+
+/* KPI box */
+.kpi-box { border: 0.5pt solid #bbb; border-radius: 4pt; padding: 8pt 10pt; margin-bottom: 10pt; background: #fafafa; }
+.kpi-title { font-weight: bold; font-size: 9pt; margin-bottom: 5pt; }
+.kpi-grid-tbl { width: 100%; border-collapse: collapse; }
+.kpi-grid-tbl td { padding: 3pt 10pt; font-size: 9pt; }
+.kpi-lbl { color: #555; }
+.kpi-val { font-weight: bold; text-align: right; }
+</style>
+</head>
+<body>
+
+<!-- ===================== งบฐานะการเงิน ===================== -->
+<div class="company-header">
+  <div class="company-name">{{ company.name or 'บริษัท' }}</div>
+  <div class="stmt-title">งบฐานะการเงิน</div>
+  <div class="stmt-sub">ณ วันที่ 31 ธันวาคม {{ year }}{% if prev_year %} และ {{ prev_year }}{% endif %}</div>
+  <div class="stmt-sub" style="font-size:8.5pt;color:#666;margin-top:2pt;">(หน่วย: บาท)</div>
+</div>
+
+<table class="fs-table">
+  <thead>
+    <tr>
+      <th class="left" style="width:45%">รายการ</th>
+      <th class="note-col">หมายเหตุ</th>
+      <th class="amt-col">{{ year }}</th>
+      <th class="amt-col">{% if prev_year %}{{ prev_year }}{% else %}ปีก่อน{% endif %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- ASSETS -->
+    <tr class="sec-hdr"><td colspan="4">สินทรัพย์</td></tr>
+    <tr class="sub-hdr"><td colspan="4">สินทรัพย์หมุนเวียน</td></tr>
+    <tr class="ind">
+      <td>เงินสดและรายการเทียบเท่าเงินสด</td>
+      <td class="note">3</td>
+      <td class="num">{{ fmt(cur_bs.cash) }}</td>
+      <td class="num">{{ fmt(prev_bs.cash) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>ลูกหนี้การค้า</td>
+      <td class="note">4</td>
+      <td class="num">{{ fmt(cur_bs.ar) }}</td>
+      <td class="num">{{ fmt(prev_bs.ar) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>ลูกหนี้เงินกู้ระยะสั้น</td>
+      <td class="note">5</td>
+      <td class="num">{{ fmt(cur_bs.loanAr) }}</td>
+      <td class="num">{{ fmt(prev_bs.loanAr) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>สินทรัพย์หมุนเวียนอื่น</td>
+      <td class="note">6</td>
+      <td class="num">{{ fmt(cur_bs.oca) }}</td>
+      <td class="num">{{ fmt(prev_bs.oca) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>รวมสินทรัพย์หมุนเวียน</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.currentAssets) }}</td>
+      <td class="num">{{ fmt(prev_bs.currentAssets) }}</td>
+    </tr>
+    <tr class="sub-hdr"><td colspan="4">สินทรัพย์ไม่หมุนเวียน</td></tr>
+    <tr class="ind">
+      <td>ที่ดิน อาคาร และอุปกรณ์ — สุทธิ</td>
+      <td class="note">7</td>
+      <td class="num">{{ fmt(cur_bs.ppe) }}</td>
+      <td class="num">{{ fmt(prev_bs.ppe) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>รวมสินทรัพย์ไม่หมุนเวียน</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.ppe) }}</td>
+      <td class="num">{{ fmt(prev_bs.ppe) }}</td>
+    </tr>
+    <tr class="grand-total">
+      <td>รวมสินทรัพย์</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.totalAssets) }}</td>
+      <td class="num">{{ fmt(prev_bs.totalAssets) }}</td>
+    </tr>
+
+    <!-- LIABILITIES -->
+    <tr><td colspan="4" style="padding:6pt 0"></td></tr>
+    <tr class="sec-hdr"><td colspan="4">หนี้สินและส่วนของผู้ถือหุ้น</td></tr>
+    <tr class="sub-hdr"><td colspan="4">หนี้สินหมุนเวียน</td></tr>
+    <tr class="ind">
+      <td>เจ้าหนี้การค้า</td>
+      <td class="note">8</td>
+      <td class="num">{{ fmt(cur_bs.ap) }}</td>
+      <td class="num">{{ fmt(prev_bs.ap) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>ภาษีเงินได้ค้างจ่าย</td>
+      <td class="note">11</td>
+      <td class="num">{{ fmt(cur_bs.taxPay) }}</td>
+      <td class="num">{{ fmt(prev_bs.taxPay) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>หนี้สินหมุนเวียนอื่น</td>
+      <td class="note">9</td>
+      <td class="num">{{ fmt(cur_bs.ocl) }}</td>
+      <td class="num">{{ fmt(prev_bs.ocl) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>รวมหนี้สินหมุนเวียน</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.totalLiab) }}</td>
+      <td class="num">{{ fmt(prev_bs.totalLiab) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>รวมหนี้สิน</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.totalLiab) }}</td>
+      <td class="num">{{ fmt(prev_bs.totalLiab) }}</td>
+    </tr>
+
+    <!-- EQUITY -->
+    <tr class="sub-hdr"><td colspan="4">ส่วนของผู้ถือหุ้น</td></tr>
+    <tr class="ind">
+      <td>ทุนจดทะเบียนและชำระแล้ว</td>
+      <td class="note">10</td>
+      <td class="num">{{ fmt(cur_bs.capital) }}</td>
+      <td class="num">{{ fmt(prev_bs.capital) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>กำไรสะสม</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.reEnd) }}</td>
+      <td class="num">{{ fmt(prev_bs.reEnd) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>รวมส่วนของผู้ถือหุ้น</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.totalEquity) }}</td>
+      <td class="num">{{ fmt(prev_bs.totalEquity) }}</td>
+    </tr>
+    <tr class="grand-total">
+      <td>รวมหนี้สินและส่วนของผู้ถือหุ้น</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_bs.totalLiabEq) }}</td>
+      <td class="num">{{ fmt(prev_bs.totalLiabEq) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== งบกำไรขาดทุน ===================== -->
+<div class="page-break"></div>
+
+<div class="company-header">
+  <div class="company-name">{{ company.name or 'บริษัท' }}</div>
+  <div class="stmt-title">งบกำไรขาดทุนเบ็ดเสร็จ</div>
+  <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม {{ year }}{% if prev_year %} และ {{ prev_year }}{% endif %}</div>
+  <div class="stmt-sub" style="font-size:8.5pt;color:#666;margin-top:2pt;">(หน่วย: บาท)</div>
+</div>
+
+<table class="fs-table">
+  <thead>
+    <tr>
+      <th class="left" style="width:45%">รายการ</th>
+      <th class="note-col">หมายเหตุ</th>
+      <th class="amt-col">{{ year }}</th>
+      <th class="amt-col">{% if prev_year %}{{ prev_year }}{% else %}ปีก่อน{% endif %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="sec-hdr"><td colspan="4">รายได้</td></tr>
+    <tr class="ind">
+      <td>รายได้จากการขาย / รับเหมาก่อสร้าง</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.rev) }}</td>
+      <td class="num">{{ fmt(prev_pl.rev) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>รายได้อื่น</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.otherRev) }}</td>
+      <td class="num">{{ fmt(prev_pl.otherRev) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>รวมรายได้</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.totalRev) }}</td>
+      <td class="num">{{ fmt(prev_pl.totalRev) }}</td>
+    </tr>
+
+    <tr class="sec-hdr"><td colspan="4">ค่าใช้จ่าย</td></tr>
+    <tr class="ind">
+      <td>ต้นทุนขาย / ต้นทุนก่อสร้าง</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.cogs) }}</td>
+      <td class="num">{{ fmt(prev_pl.cogs) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>กำไรขั้นต้น</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.grossProfit) }}</td>
+      <td class="num">{{ fmt(prev_pl.grossProfit) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>ค่าใช้จ่ายในการบริหาร</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.admin) }}</td>
+      <td class="num">{{ fmt(prev_pl.admin) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>กำไรก่อนหักภาษีเงินได้</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.pbt) }}</td>
+      <td class="num">{{ fmt(prev_pl.pbt) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>ภาษีเงินได้นิติบุคคล</td>
+      <td class="note">11</td>
+      <td class="num">{{ fmt(cur_pl.tax) }}</td>
+      <td class="num">{{ fmt(prev_pl.tax) }}</td>
+    </tr>
+    <tr class="grand-total">
+      <td>กำไรสุทธิสำหรับปี</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.netIncome) }}</td>
+      <td class="num">{{ fmt(prev_pl.netIncome) }}</td>
+    </tr>
+    <tr>
+      <td colspan="4" style="padding-top:6pt;font-size:8.5pt;color:#555;">
+        กำไรเบ็ดเสร็จอื่นสำหรับปี — ไม่มี (Nil)
+      </td>
+    </tr>
+    <tr class="grand-total">
+      <td>กำไรเบ็ดเสร็จรวมสำหรับปี</td>
+      <td></td>
+      <td class="num">{{ fmt(cur_pl.netIncome) }}</td>
+      <td class="num">{{ fmt(prev_pl.netIncome) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== งบเปลี่ยนแปลงส่วนผู้ถือหุ้น ===================== -->
+<div class="page-break"></div>
+
+<div class="company-header">
+  <div class="company-name">{{ company.name or 'บริษัท' }}</div>
+  <div class="stmt-title">งบแสดงการเปลี่ยนแปลงส่วนของผู้ถือหุ้น</div>
+  <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม {{ year }}</div>
+  <div class="stmt-sub" style="font-size:8.5pt;color:#666;margin-top:2pt;">(หน่วย: บาท)</div>
+</div>
+
+<table class="fs-table">
+  <thead>
+    <tr>
+      <th class="left" style="width:40%">รายการ</th>
+      <th class="amt-col">ทุนชำระแล้ว</th>
+      <th class="amt-col">กำไรสะสม</th>
+      <th class="amt-col">รวม</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if prev_year %}
+    <tr>
+      <td>ยอดคงเหลือ ณ วันที่ 1 มกราคม {{ prev_year }}</td>
+      <td class="num">{{ fmt(prev_bs.capital) }}</td>
+      <td class="num">{{ fmt(prev_bs.reBegin) }}</td>
+      <td class="num">{{ fmt((prev_bs.capital or 0) + (prev_bs.reBegin or 0)) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>กำไรสุทธิสำหรับปี {{ prev_year }}</td>
+      <td class="num">-</td>
+      <td class="num">{{ fmt(prev_pl.netIncome) }}</td>
+      <td class="num">{{ fmt(prev_pl.netIncome) }}</td>
+    </tr>
+    <tr class="subtotal">
+      <td>ยอดคงเหลือ ณ วันที่ 31 ธันวาคม {{ prev_year }}</td>
+      <td class="num">{{ fmt(prev_bs.capital) }}</td>
+      <td class="num">{{ fmt(prev_bs.reEnd) }}</td>
+      <td class="num">{{ fmt(prev_bs.totalEquity) }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td>ยอดคงเหลือ ณ วันที่ 1 มกราคม {{ year }}</td>
+      <td class="num">{{ fmt(cur_bs.capital) }}</td>
+      <td class="num">{{ fmt(cur_bs.reBegin) }}</td>
+      <td class="num">{{ fmt((cur_bs.capital or 0) + (cur_bs.reBegin or 0)) }}</td>
+    </tr>
+    <tr class="ind">
+      <td>กำไรสุทธิสำหรับปี {{ year }}</td>
+      <td class="num">-</td>
+      <td class="num">{{ fmt(cur_pl.netIncome) }}</td>
+      <td class="num">{{ fmt(cur_pl.netIncome) }}</td>
+    </tr>
+    <tr class="grand-total">
+      <td>ยอดคงเหลือ ณ วันที่ 31 ธันวาคม {{ year }}</td>
+      <td class="num">{{ fmt(cur_bs.capital) }}</td>
+      <td class="num">{{ fmt(cur_bs.reEnd) }}</td>
+      <td class="num">{{ fmt(cur_bs.totalEquity) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===================== หมายเหตุประกอบงบการเงิน ===================== -->
+<div class="page-break"></div>
+
+<div class="company-header">
+  <div class="company-name">{{ company.name or 'บริษัท' }}</div>
+  <div class="stmt-title">หมายเหตุประกอบงบการเงิน</div>
+  <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม {{ year }}</div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 1 — ข้อมูลทั่วไป</div>
+  <div class="note-body">
+    {{ company.name or 'บริษัท' }} ("บริษัท") จดทะเบียนเป็นนิติบุคคลประเภทบริษัทจำกัดตามกฎหมายไทย
+    เลขทะเบียนนิติบุคคล {{ company.taxId or '-' }}
+    ที่อยู่ตามที่จดทะเบียน {{ company.address or '-' }}
+    บริษัทดำเนินธุรกิจ{{ company.businessType or 'รับเหมาก่อสร้าง' }}
+    กรรมการผู้มีอำนาจลงนาม: {{ company.director or '-' }}
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 2 — สรุปนโยบายการบัญชีที่สำคัญ</div>
+  <div class="note-body">
+    <b>2.1 เกณฑ์การจัดทำงบการเงิน</b><br>
+    งบการเงินนี้จัดทำขึ้นตามมาตรฐานการรายงานทางการเงินสำหรับกิจการที่ไม่มีส่วนได้เสียสาธารณะ (TFRS for NPAEs)
+    โดยใช้เกณฑ์ราคาทุนเดิมเป็นเกณฑ์การวัดมูลค่า<br><br>
+    <b>2.2 การรับรู้รายได้</b><br>
+    รายได้จากการขายสินค้าหรือให้บริการรับรู้เมื่อบริษัทได้ส่งมอบสินค้า/บริการแล้ว
+    และสามารถวัดมูลค่าได้อย่างน่าเชื่อถือ<br><br>
+    <b>2.3 ภาษีเงินได้</b><br>
+    บริษัทคำนวณภาษีเงินได้นิติบุคคลในอัตราร้อยละ {{ "%.0f"|format((kpi.de + 1) * 0 + 20) }} ของกำไรสุทธิทางภาษี
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 3 — เงินสดและรายการเทียบเท่าเงินสด</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>เงินสดในมือ</td><td>{{ fmt(cur_bs.cash) }}</td><td>{{ fmt(prev_bs.cash) }}</td></tr>
+      <tr><td><b>รวม</b></td><td><b>{{ fmt(cur_bs.cash) }}</b></td><td><b>{{ fmt(prev_bs.cash) }}</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 4 — ลูกหนี้การค้า</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>ลูกหนี้การค้า</td><td>{{ fmt(cur_bs.ar) }}</td><td>{{ fmt(prev_bs.ar) }}</td></tr>
+      <tr><td><b>รวม</b></td><td><b>{{ fmt(cur_bs.ar) }}</b></td><td><b>{{ fmt(prev_bs.ar) }}</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 5 — ลูกหนี้เงินกู้ระยะสั้น</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>เงินให้กู้ยืมระยะสั้นแก่บุคคลที่เกี่ยวข้อง</td><td>{{ fmt(cur_bs.loanAr) }}</td><td>{{ fmt(prev_bs.loanAr) }}</td></tr>
+      <tr><td><b>รวม</b></td><td><b>{{ fmt(cur_bs.loanAr) }}</b></td><td><b>{{ fmt(prev_bs.loanAr) }}</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 6 — สินทรัพย์หมุนเวียนอื่น</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>ค่าใช้จ่ายจ่ายล่วงหน้าและอื่น ๆ</td><td>{{ fmt(cur_bs.oca) }}</td><td>{{ fmt(prev_bs.oca) }}</td></tr>
+      <tr><td><b>รวม</b></td><td><b>{{ fmt(cur_bs.oca) }}</b></td><td><b>{{ fmt(prev_bs.oca) }}</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 7 — ที่ดิน อาคาร และอุปกรณ์</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>ที่ดิน อาคาร และอุปกรณ์ — ราคาทุน</td><td>{{ fmt(cur_bs.ppe) }}</td><td>{{ fmt(prev_bs.ppe) }}</td></tr>
+      <tr><td>หัก ค่าเสื่อมราคาสะสม</td><td>-</td><td>-</td></tr>
+      <tr><td><b>มูลค่าสุทธิ</b></td><td><b>{{ fmt(cur_bs.ppe) }}</b></td><td><b>{{ fmt(prev_bs.ppe) }}</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 8 — เจ้าหนี้การค้า</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>เจ้าหนี้การค้า — บุคคลภายนอก</td><td>{{ fmt(cur_bs.ap) }}</td><td>{{ fmt(prev_bs.ap) }}</td></tr>
+      <tr><td><b>รวม</b></td><td><b>{{ fmt(cur_bs.ap) }}</b></td><td><b>{{ fmt(prev_bs.ap) }}</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 9 — หนี้สินหมุนเวียนอื่น</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>ค่าใช้จ่ายค้างจ่ายและอื่น ๆ</td><td>{{ fmt(cur_bs.ocl) }}</td><td>{{ fmt(prev_bs.ocl) }}</td></tr>
+      <tr><td><b>รวม</b></td><td><b>{{ fmt(cur_bs.ocl) }}</b></td><td><b>{{ fmt(prev_bs.ocl) }}</b></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 10 — ทุน</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>ทุนจดทะเบียน</td><td>{{ fmt(cur_bs.capital) }}</td><td>{{ fmt(prev_bs.capital) }}</td></tr>
+      <tr><td>ทุนที่ออกและชำระแล้ว</td><td>{{ fmt(cur_bs.capital) }}</td><td>{{ fmt(prev_bs.capital) }}</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="note-section no-break">
+  <div class="note-title">หมายเหตุ 11 — ภาษีเงินได้นิติบุคคล</div>
+  <div class="note-body">
+    <table class="note-table">
+      <tr><th>รายการ</th><th>{{ year }}</th><th>{% if prev_year %}{{ prev_year }}{% endif %}</th></tr>
+      <tr><td>ภาษีเงินได้ค้างจ่าย (งบดุล)</td><td>{{ fmt(cur_bs.taxPay) }}</td><td>{{ fmt(prev_bs.taxPay) }}</td></tr>
+      <tr><td>ภาษีเงินได้สำหรับงวด (งบกำไรขาดทุน)</td><td>{{ fmt(cur_pl.tax) }}</td><td>{{ fmt(prev_pl.tax) }}</td></tr>
+    </table>
+    <br>
+    <b>อัตราส่วนทางการเงิน (Pro Forma)</b>
+    <table class="note-table" style="margin-top:4pt">
+      <tr><th>อัตราส่วน</th><th>{{ year }}</th></tr>
+      <tr><td>อัตรากำไรขั้นต้น</td><td>{{ fmt_pct(kpi.grossMargin) }}</td></tr>
+      <tr><td>อัตรากำไรสุทธิ</td><td>{{ fmt_pct(kpi.netMargin) }}</td></tr>
+      <tr><td>อัตราส่วนหนี้สินต่อส่วนทุน (D/E)</td><td>{{ "%.2f"|format(kpi.de) }} เท่า</td></tr>
+      <tr><td>อัตราส่วนสภาพคล่อง</td><td>{{ "%.2f"|format(kpi.currentRatio) }} เท่า</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ===================== งบกระแสเงินสด ===================== -->
+<div class="page-break"></div>
+
+<div class="company-header">
+  <div class="company-name">{{ company.name or 'บริษัท' }}</div>
+  <div class="stmt-title">งบกระแสเงินสด</div>
+  <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม {{ year }}</div>
+  <div class="stmt-sub" style="font-size:8.5pt;color:#666;margin-top:2pt;">(หน่วย: บาท) — วิธีทางอ้อม</div>
+</div>
+
+{% if cf %}
+<table class="fs-table">
+  <thead>
+    <tr>
+      <th class="left" style="width:65%">รายการ</th>
+      <th class="amt-col">{{ year }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="sec-hdr"><td colspan="2">กระแสเงินสดจากกิจกรรมดำเนินงาน</td></tr>
+    <tr class="ind"><td>กำไรสุทธิ</td><td class="num">{{ fmt(cf.netIncome) }}</td></tr>
+    <tr><td style="padding:2pt 6pt;font-size:8.5pt;color:#555">รายการปรับปรุง:</td><td></td></tr>
+    {% if cf.dep %}<tr class="ind"><td>ค่าเสื่อมราคา</td><td class="num">{{ fmt(cf.dep) }}</td></tr>{% endif %}
+    <tr><td style="padding:2pt 6pt 2pt 16pt;font-size:8.5pt;color:#555">การเปลี่ยนแปลงในเงินทุนหมุนเวียน:</td><td></td></tr>
+    <tr class="ind"><td>ลูกหนี้การค้า (เพิ่ม)/ลด</td><td class="num">{{ fmt(-cf.dAR if cf.dAR else 0) }}</td></tr>
+    {% if cf.dLoanAR %}<tr class="ind"><td>ลูกหนี้เงินกู้ระยะสั้น (เพิ่ม)/ลด</td><td class="num">{{ fmt(-cf.dLoanAR) }}</td></tr>{% endif %}
+    {% if cf.dOCA %}<tr class="ind"><td>สินทรัพย์หมุนเวียนอื่น (เพิ่ม)/ลด</td><td class="num">{{ fmt(-cf.dOCA) }}</td></tr>{% endif %}
+    <tr class="ind"><td>เจ้าหนี้การค้า เพิ่ม/(ลด)</td><td class="num">{{ fmt(cf.dAP if cf.dAP else 0) }}</td></tr>
+    {% if cf.dTaxPay %}<tr class="ind"><td>ภาษีค้างจ่าย เพิ่ม/(ลด)</td><td class="num">{{ fmt(cf.dTaxPay) }}</td></tr>{% endif %}
+    {% if cf.dOCL %}<tr class="ind"><td>หนี้สินอื่น เพิ่ม/(ลด)</td><td class="num">{{ fmt(cf.dOCL) }}</td></tr>{% endif %}
+    <tr class="subtotal"><td>เงินสดสุทธิจากกิจกรรมดำเนินงาน</td><td class="num">{{ fmt(cf.opCF) }}</td></tr>
+
+    <tr><td colspan="2" style="padding:6pt 0"></td></tr>
+    <tr class="sec-hdr"><td colspan="2">กระแสเงินสดจากกิจกรรมลงทุน</td></tr>
+    <tr class="ind"><td>{{ 'จ่ายซื้อ' if cf.invCF and cf.invCF < 0 else 'รับจากการจำหน่าย' }}ที่ดิน อาคาร และอุปกรณ์</td><td class="num">{{ fmt(cf.invCF) }}</td></tr>
+    <tr class="subtotal"><td>เงินสดสุทธิจากกิจกรรมลงทุน</td><td class="num">{{ fmt(cf.invCF) }}</td></tr>
+
+    <tr><td colspan="2" style="padding:6pt 0"></td></tr>
+    <tr class="sec-hdr"><td colspan="2">กระแสเงินสดจากกิจกรรมจัดหาเงิน</td></tr>
+    {% if cf.dCapital %}<tr class="ind"><td>รับเพิ่มทุน</td><td class="num">{{ fmt(cf.dCapital) }}</td></tr>{% endif %}
+    {% if cf.divPaid %}<tr class="ind"><td>จ่ายเงินปันผล</td><td class="num">{{ fmt(cf.divPaid) }}</td></tr>{% endif %}
+    <tr class="subtotal"><td>เงินสดสุทธิจากกิจกรรมจัดหาเงิน</td><td class="num">{{ fmt(cf.finCF) }}</td></tr>
+
+    <tr><td colspan="2" style="padding:4pt 0"></td></tr>
+    <tr class="grand-total"><td>เงินสดเพิ่ม (ลด) สุทธิสำหรับปี</td><td class="num">{{ fmt(cf.netCF) }}</td></tr>
+    <tr class="ind"><td>เงินสดและรายการเทียบเท่าเงินสดต้นปี</td><td class="num">{{ fmt(cf.beginCash) }}</td></tr>
+    <tr class="grand-total"><td>เงินสดและรายการเทียบเท่าเงินสดปลายปี</td><td class="num">{{ fmt(cf.endCash) }}</td></tr>
+  </tbody>
+</table>
+{% else %}
+<p style="text-align:center;color:#888;padding:20pt">ไม่มีข้อมูลงบกระแสเงินสด</p>
+{% endif %}
+
+<!-- ===================== ลายเซ็น ===================== -->
+<div style="margin-top: 40pt; page-break-inside: avoid;">
+  <table style="width:100%; border-collapse:collapse; font-size:9.5pt;">
+    <tr>
+      <td style="width:50%; text-align:center; padding-top:36pt; vertical-align:bottom;">
+        <div style="border-top:1pt solid #000; width:60%; margin:0 auto 4pt;"></div>
+        <div>( {{ company.director or '...........................' }} )</div>
+        <div style="font-size:8.5pt; color:#444;">กรรมการผู้มีอำนาจลงนาม</div>
+        <div style="font-size:8.5pt; color:#444;">{{ company.name }}</div>
+      </td>
+      <td style="width:50%; text-align:center; padding-top:36pt; vertical-align:bottom;">
+        <div style="border-top:1pt solid #000; width:60%; margin:0 auto 4pt;"></div>
+        <div>( ............................... )</div>
+        <div style="font-size:8.5pt; color:#444;">ผู้จัดทำ</div>
+        <div style="font-size:8.5pt; color:#444;">S.P.N. Corporate Services Co., Ltd.</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="text-align:center; margin-top:14pt; font-size:8pt; color:#666; border-top:0.5pt solid #ccc; padding-top:8pt;">
+    เอกสารนี้จัดทำโดย S.P.N. Corporate Services Co., Ltd. | สร้างเมื่อ {{ generated_at }} | FOR INTERNAL DISCUSSION ONLY
+  </div>
+</div>
+
+</body>
+</html>

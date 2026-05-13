@@ -1,0 +1,10 @@
+{
+  "company": {"name": "บริษัท ทดสอบ จำกัด", "taxId": "0545561000001", "director": "นายทดสอบ", "address": "กรุงเทพ", "businessType": "รับเหมาก่อสร้าง"},
+  "year": "2567",
+  "prevYear": null,
+  "current": {
+    "draft": {"rev": 5000000, "otherRev": 0, "cogs": 3000000, "admin": 1000000, "ar": 500000, "loanAr": 0, "oca": 0, "ppe": 1000000, "ap": 200000, "taxPay": 200000, "ocl": 0, "capital": 1000000, "reBegin": 100000, "cash": 0},
+    "settings": {"taxMode": "auto", "taxRate": 0.20, "targetTax": 0, "cashAutoBalance": true}
+  },
+  "prev": null
+}
