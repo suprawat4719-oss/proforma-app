@@ -421,13 +421,13 @@ function defaultSettings(){
   return{taxMode:'auto',taxRate:0.20,targetTax:0,cashAutoBalance:true};
 }
 function defaultDraft(){
-  return{rev:0,otherRev:0,cogs:0,admin:0,depExp:0,interestExp:0,
+  return{rev:0,otherRev:0,cogs:0,sellingExp:0,admin:0,depExp:0,interestExp:0,
     cash:0,ar:0,loanAr:0,inventory:0,oca:0,deposit:0,ppe:0,intangible:0,
     ap:0,shortLoan:0,longLoan:0,taxPay:0,ocl:0,longLoanNC:0,directorLoan:0,
     capital:0,reBegin:0};
 }
 function defaultBase(){
-  return{rev:0,otherRev:0,cogs:0,admin:0,depExp:0,interestExp:0,tax:0,netIncome:0,
+  return{rev:0,otherRev:0,cogs:0,sellingExp:0,admin:0,depExp:0,interestExp:0,tax:0,netIncome:0,
     cash:0,ar:0,loanAr:0,inventory:0,oca:0,deposit:0,ppe:0,intangible:0,
     ap:0,shortLoan:0,longLoan:0,taxPay:0,ocl:0,longLoanNC:0,directorLoan:0,
     capital:0,reBegin:0};
@@ -487,14 +487,14 @@ function compute(draft,settings){
   const mode=s.taxMode||'auto';
 
   if(mode==='target-rev'){
-    d.rev=(targetTax/taxRate)+n(d.cogs)+n(d.admin)+n(d.depExp)+n(d.interestExp)-n(d.otherRev);
+    d.rev=(targetTax/taxRate)+n(d.cogs)+n(d.sellingExp)+n(d.admin)+n(d.depExp)+n(d.interestExp)-n(d.otherRev);
   }else if(mode==='target-cogs'){
-    d.cogs=n(d.rev)+n(d.otherRev)-n(d.admin)-n(d.depExp)-n(d.interestExp)-(targetTax/taxRate);
+    d.cogs=n(d.rev)+n(d.otherRev)-n(d.sellingExp)-n(d.admin)-n(d.depExp)-n(d.interestExp)-(targetTax/taxRate);
   }
 
   const totalRev=n(d.rev)+n(d.otherRev);
   const grossProfit=totalRev-n(d.cogs);
-  const ebitda=grossProfit-n(d.admin);
+  const ebitda=grossProfit-n(d.sellingExp)-n(d.admin);
   const ebit=ebitda-n(d.depExp);
   const pbt=ebit-n(d.interestExp);
   const tax=mode==='auto'?Math.max(0,pbt*taxRate):targetTax;
@@ -535,7 +535,7 @@ function computeBase(base){
   const b=Object.assign(defaultBase(),base);
   const totalRev=n(b.rev)+n(b.otherRev);
   const grossProfit=totalRev-n(b.cogs);
-  const ebitda=grossProfit-n(b.admin);
+  const ebitda=grossProfit-n(b.sellingExp)-n(b.admin);
   const ebit=ebitda-n(b.depExp);
   const pbt=ebit-n(b.interestExp);
   const tax=n(b.tax);
@@ -946,6 +946,7 @@ function renderBaseTab(yd){
     ${bf('rev','รายได้จากการขาย/รับเหมาก่อสร้าง')}
     ${bf('otherRev','รายได้อื่น')}
     ${bf('cogs','ต้นทุนขาย/ต้นทุนก่อสร้าง')}
+    ${bf('sellingExp','ค่าใช้จ่ายในการขาย')}
     ${bf('admin','ค่าใช้จ่ายในการบริหาร')}
     ${bf('depExp','ค่าเสื่อมราคา')}
     ${bf('interestExp','ดอกเบี้ยจ่าย')}
@@ -1109,6 +1110,7 @@ function renderDraftTab(yd){
         <td>ต้นทุนขาย/ต้นทุนก่อสร้าง ${isCogs?'<span style="font-size:10px;color:var(--blue)">[คำนวณ]</span>':''}</td>
         <td class="num-r">${inp('cogs',d.cogs,isCogs)}</td><td class="num-r">${bv(base.cogs)}</td>
       </tr>
+      <tr class="ind"><td>ค่าใช้จ่ายในการขาย</td><td class="num-r">${inp('sellingExp')}</td><td class="num-r">${bv(base.sellingExp)}</td></tr>
       <tr class="ind"><td>ค่าใช้จ่ายในการบริหาร</td><td class="num-r">${inp('admin')}</td><td class="num-r">${bv(base.admin)}</td></tr>
       <tr class="tr-sub"><td>กำไรขั้นต้น</td><td class="num-r">${cv('cv-grossProfit',pl.grossProfit)}</td><td class="num-r">${bv(baseRes.pl.grossProfit)}</td></tr>
       <tr class="ind"><td>ค่าเสื่อมราคา</td><td class="num-r">${inp('depExp')}</td><td class="num-r">${bv(base.depExp)}</td></tr>
@@ -1697,6 +1699,7 @@ function computeTarget(base,tgt,bRes){
   }
 
   const cogsRate=n(base.cogs)/baseRev;
+  const sellingRate=n(base.sellingExp)/baseRev;
   const adminRate=n(base.admin)/baseRev;
   const depRate=n(base.depExp)/baseRev;
   const intRate=n(base.interestExp)/baseRev;
@@ -1705,11 +1708,12 @@ function computeTarget(base,tgt,bRes){
 
   const targetRev=netMarginRate!==0?targetNI/netMarginRate:baseRev;
   const targetCogs=targetRev*cogsRate;
+  const targetSelling=targetRev*sellingRate;
   const targetAdmin=targetRev*adminRate;
   const targetDep=targetRev*depRate;
   const targetInterest=targetRev*intRate;
   const targetGP=targetRev-targetCogs;
-  const targetEBIT=targetGP-targetAdmin-targetDep;
+  const targetEBIT=targetGP-targetSelling-targetAdmin-targetDep;
   const targetPBT=targetEBIT-targetInterest;
   const targetTax=Math.max(0,targetPBT*taxRate);
   const targetNICalc=targetPBT-targetTax;
@@ -1723,7 +1727,7 @@ function computeTarget(base,tgt,bRes){
   const newCash=n(base.cash)+equityDelta;
   const newTotalAssets=baseTotal+equityDelta;
 
-  return{targetRev,targetCogs,targetAdmin,targetDep,targetInterest,
+  return{targetRev,targetCogs,targetSelling,targetAdmin,targetDep,targetInterest,
     targetGP,targetEBIT,targetPBT,targetTax,targetNI:targetNICalc,
     targetREEnd,targetEquity,
     bsCash:newCash,bsTotalAssets:newTotalAssets,bsEquityDelta:equityDelta};
@@ -2400,8 +2404,8 @@ async function runAIImport(){
   const prompt=`คุณเป็นนักบัญชีผู้เชี่ยวชาญ TFRS for NPAEs
 วิเคราะห์งบการเงินนี้และสกัดตัวเลขทั้งหมด (หน่วยบาท ไม่ต้องใส่ comma)
 ตอบเฉพาะ JSON object เท่านั้น ไม่มีข้อความอื่น:
-{"rev":0,"otherRev":0,"cogs":0,"admin":0,"depExp":0,"interestExp":0,"tax":0,"netIncome":0,"cash":0,"ar":0,"loanAr":0,"inventory":0,"oca":0,"deposit":0,"ppe":0,"intangible":0,"ap":0,"shortLoan":0,"longLoan":0,"taxPay":0,"ocl":0,"longLoanNC":0,"directorLoan":0,"capital":0,"reBegin":0}
-หมายเหตุ: rev=รายได้หลัก, otherRev=รายได้อื่น, cogs=ต้นทุนขาย, admin=ค่าใช้จ่ายบริหาร, depExp=ค่าเสื่อมราคา, interestExp=ดอกเบี้ยจ่าย, tax=ภาษีนิติบุคคล, netIncome=กำไรสุทธิ, cash=เงินสด, ar=ลูกหนี้การค้า, loanAr=ลูกหนี้เงินกู้, inventory=สินค้าคงเหลือ, oca=สินทรัพย์หมุนเวียนอื่น, deposit=เงินมัดจำ, ppe=ที่ดินอาคารอุปกรณ์สุทธิ, intangible=สินทรัพย์ไม่มีตัวตน, ap=เจ้าหนี้การค้า, shortLoan=เงินกู้ระยะสั้น, longLoan=เงินกู้ยาวส่วนหมุนเวียน, taxPay=ภาษีค้างจ่าย, ocl=หนี้สินหมุนเวียนอื่น, longLoanNC=เงินกู้ยาวไม่หมุนเวียน, directorLoan=เงินกู้กรรมการ, capital=ทุนชำระแล้ว, reBegin=กำไรสะสมต้นปี`;
+{"rev":0,"otherRev":0,"cogs":0,"sellingExp":0,"admin":0,"depExp":0,"interestExp":0,"tax":0,"netIncome":0,"cash":0,"ar":0,"loanAr":0,"inventory":0,"oca":0,"deposit":0,"ppe":0,"intangible":0,"ap":0,"shortLoan":0,"longLoan":0,"taxPay":0,"ocl":0,"longLoanNC":0,"directorLoan":0,"capital":0,"reBegin":0}
+หมายเหตุ: rev=รายได้หลัก, otherRev=รายได้อื่น, cogs=ต้นทุนขาย, sellingExp=ค่าใช้จ่ายในการขาย(Selling expenses), admin=ค่าใช้จ่ายบริหาร, depExp=ค่าเสื่อมราคา, interestExp=ดอกเบี้ยจ่าย, tax=ภาษีนิติบุคคล, netIncome=กำไรสุทธิ, cash=เงินสด, ar=ลูกหนี้การค้า, loanAr=ลูกหนี้เงินกู้, inventory=สินค้าคงเหลือ, oca=สินทรัพย์หมุนเวียนอื่น, deposit=เงินมัดจำ, ppe=ที่ดินอาคารอุปกรณ์สุทธิ, intangible=สินทรัพย์ไม่มีตัวตน, ap=เจ้าหนี้การค้า, shortLoan=เงินกู้ระยะสั้น, longLoan=เงินกู้ยาวส่วนหมุนเวียน, taxPay=ภาษีค้างจ่าย, ocl=หนี้สินหมุนเวียนอื่น, longLoanNC=เงินกู้ยาวไม่หมุนเวียน, directorLoan=เงินกู้กรรมการ, capital=ทุนชำระแล้ว, reBegin=กำไรสะสมต้นปี`;
 
   let msgContent;
   if(useFile&&_aiFileData){
@@ -2543,6 +2547,9 @@ function syncFullDataToFinancials(yd){
     n(pd.adminBadDebt)+n(pd.adminOther);
   if(adminSum>0)yd.base.admin=adminSum;
 
+  // 2b. Selling expenses → base.sellingExp
+  if(n(pd.sellingExpenses)>0)yd.base.sellingExp=n(pd.sellingExpenses);
+
   // 3. PPE net: sum net book from ppeDetail → base.ppe
   const ppeRows=bd.ppeDetail||[];
   if(ppeRows.length>0){
@@ -2642,6 +2649,7 @@ function applyTargetToDraft(){
   // P&L fields
   yd.draft.rev=Math.round(r.targetRev*100)/100;
   yd.draft.cogs=Math.round(r.targetCogs*100)/100;
+  yd.draft.sellingExp=Math.round(r.targetSelling*100)/100;
   yd.draft.admin=Math.round(r.targetAdmin*100)/100;
   yd.draft.depExp=Math.round(r.targetDep*100)/100;
   yd.draft.interestExp=Math.round(r.targetInterest*100)/100;
@@ -2674,6 +2682,7 @@ function saveTargetScenario(){
   const syntheticBase=Object.assign({},base,{
     rev:r.targetRev,
     cogs:r.targetCogs,
+    sellingExp:r.targetSelling,
     admin:r.targetAdmin,
     depExp:r.targetDep,
     interestExp:r.targetInterest,
@@ -2683,9 +2692,9 @@ function saveTargetScenario(){
   const syntheticRes=computeBase(syntheticBase);
   yd.scenarios.push({
     name:`Target: ${label}`,note:'จาก Profit Target Engine',
-    draft:{rev:r.targetRev,cogs:r.targetCogs,admin:r.targetAdmin,depExp:r.targetDep,interestExp:r.targetInterest,reBegin:n(base.reBegin),capital:n(base.capital)},
+    draft:{rev:r.targetRev,cogs:r.targetCogs,sellingExp:r.targetSelling,admin:r.targetAdmin,depExp:r.targetDep,interestExp:r.targetInterest,reBegin:n(base.reBegin),capital:n(base.capital)},
     settings:Object.assign({},yd.settings||defaultSettings()),
-    pl:{totalRev:r.targetRev,grossProfit:r.targetGP,ebitda:r.targetGP-r.targetAdmin,ebit:r.targetEBIT,pbt:r.targetPBT,tax:r.targetTax,netIncome:r.targetNI},
+    pl:{totalRev:r.targetRev,grossProfit:r.targetGP,ebitda:r.targetGP-r.targetSelling-r.targetAdmin,ebit:r.targetEBIT,pbt:r.targetPBT,tax:r.targetTax,netIncome:r.targetNI},
     bs:syntheticRes.bs,
     score:0,savedAt:Date.now()
   });
@@ -2851,7 +2860,7 @@ async function runFullAIImport(){
 
 {
   "base":{
-    "rev":0,"otherRev":0,"cogs":0,"admin":0,"depExp":0,"interestExp":0,"tax":0,"netIncome":0,
+    "rev":0,"otherRev":0,"cogs":0,"sellingExp":0,"admin":0,"depExp":0,"interestExp":0,"tax":0,"netIncome":0,
     "cash":0,"ar":0,"loanAr":0,"inventory":0,"oca":0,"deposit":0,"ppe":0,"intangible":0,
     "ap":0,"shortLoan":0,"longLoan":0,"taxPay":0,"ocl":0,"longLoanNC":0,"directorLoan":0,
     "capital":0,"reBegin":0
@@ -2898,7 +2907,9 @@ async function runFullAIImport(){
 - หากพบ ภาษีหัก ณ ที่จ่ายค้างจ่าย ให้ใส่ใน whtPayable
 - หากพบ ภาษีมูลค่าเพิ่มค้างจ่าย ให้ใส่ใน vatPayable
 - plDetail.approvalNote = ข้อความอนุมัติงบ เช่น "กรรมการอนุมัติวันที่..."
-- adminInsurance = ค่าประกัน, adminRepairs = ค่าซ่อมบำรุง, adminAdvertising = ค่าโฆษณา, adminBadDebt = หนี้สูญ/ค่าเผื่อ`;
+- adminInsurance = ค่าประกัน, adminRepairs = ค่าซ่อมบำรุง, adminAdvertising = ค่าโฆษณา, adminBadDebt = หนี้สูญ/ค่าเผื่อ
+- base.sellingExp = ค่าใช้จ่ายในการขาย (Selling expenses) ถ้าพบในงบกำไรขาดทุน
+- plDetail.sellingExpenses = ค่าใช้จ่ายในการขายรวม (ถ้ามีรายละเอียดแยกต่างหาก)`;
 
   const isImg=(_faiFileType||'').startsWith('image');
   const msgContent=isImg
@@ -3041,6 +3052,7 @@ function exportFullStatementExcel(){
     ['รวมรายได้',bRes.pl.totalRev,''],
     ['ต้นทุนขาย/บริการ',N(base.cogs),''],
     ['กำไรขั้นต้น',bRes.pl.grossProfit,''],
+    ['ค่าใช้จ่ายในการขาย',N(base.sellingExp)||N(pd.sellingExpenses),''],
     ['ค่าใช้จ่ายในการบริหาร (รวม)',N(base.admin)||adminTotal,''],
     ['  เงินเดือนและค่าจ้าง',N(pd.adminSalaries),''],
     ['  ค่าเสื่อมราคา',N(pd.adminDep),''],
@@ -3310,6 +3322,7 @@ function printFullStatement(co,yd,bRes,dRes,cfRes,fd){
     <tr class="total"><td>รวมรายได้</td><td>${fv(bRes.pl.totalRev)}</td></tr>
     <tr class="sec"><td colspan="2">ค่าใช้จ่าย</td></tr>
     <tr class="ind"><td>ต้นทุนขาย/บริการ</td><td>${fv(N(base.cogs))}</td></tr>
+    ${N(base.sellingExp)?`<tr class="ind"><td>ค่าใช้จ่ายในการขาย</td><td>${fv(N(base.sellingExp))}</td></tr>`:''}
     <tr class="ind"><td>ค่าใช้จ่ายบริหาร</td><td>${fv(N(base.admin))}</td></tr>
     <tr class="ind"><td>ค่าเสื่อมราคา</td><td>${fv(N(base.depExp))}</td></tr>
     <tr class="ind"><td>ดอกเบี้ยจ่าย</td><td>${fv(N(base.interestExp))}</td></tr>
@@ -3633,6 +3646,7 @@ function exportComparativeExcel(){
     ['รายได้อื่น',res.d.otherRev,prevBase.otherRev],
     ['รวมรายได้',res.pl.totalRev,pr.pl.totalRev],
     ['ต้นทุนขาย',res.d.cogs,prevBase.cogs],
+    ['ค่าใช้จ่ายในการขาย',res.d.sellingExp,prevBase.sellingExp],
     ['ค่าใช้จ่ายบริหาร',res.d.admin,prevBase.admin],
     ['กำไรขั้นต้น',res.pl.grossProfit,pr.pl.grossProfit],
     ['ค่าเสื่อมราคา',res.d.depExp,prevBase.depExp],
@@ -3704,6 +3718,7 @@ function _doExportExcel(co,yd){
     ['รายได้อื่น',N(d.otherRev),N(base.otherRev)],
     ['รวมรายได้',pl.totalRev,bpl.totalRev],
     ['ต้นทุนขาย/ต้นทุนก่อสร้าง',N(d.cogs),N(base.cogs)],
+    ['ค่าใช้จ่ายในการขาย',N(d.sellingExp),N(base.sellingExp)],
     ['ค่าใช้จ่ายในการบริหาร',N(d.admin),N(base.admin)],
     ['กำไรขั้นต้น',pl.grossProfit,bpl.grossProfit],
     ['ค่าเสื่อมราคา',N(d.depExp),N(base.depExp)],
