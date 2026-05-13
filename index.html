@@ -103,14 +103,14 @@ select.fc{cursor:pointer}
 
 /* Timeline */
 .timeline{display:flex;align-items:stretch;overflow-x:auto;background:#fff;border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:16px;padding:2px 0}
-.ty{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;font-size:13px;color:var(--gray);flex-shrink:0;position:relative}
+.ty{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap;font-size:13px;color:var(--gray);flex-shrink:0}
 .ty.active{border-bottom-color:var(--blue);color:var(--blue);font-weight:700}
 .ty:hover:not(.active){background:#F8FAFC}
 .ty-st{font-size:10px;padding:1px 6px;border-radius:10px}
 .ty-st.draft{background:var(--amber-lt);color:#92400E}
 .ty-st.final{background:var(--green-lt);color:#166534}
-.ty-del{position:absolute;top:3px;right:3px;width:15px;height:15px;border-radius:50%;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:9px;display:none;align-items:center;justify-content:center;padding:0;line-height:1;font-weight:700}
-.ty:hover .ty-del{display:flex}
+.ty-del{width:16px;height:16px;border-radius:50%;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;font-weight:700;flex-shrink:0;opacity:.7;transition:opacity .15s}
+.ty-del:hover{opacity:1;background:#DC2626;color:#fff}
 .ty-add{display:flex;align-items:center;padding:8px 12px}
 
 /* Editor */
@@ -266,8 +266,8 @@ select.fc{cursor:pointer}
 
 <script>
 'use strict';
-const BUILD_TIME = '2026-05-13T16:00:00';
-const BUILD_LABEL = 'v4.0-FullStatement';
+const BUILD_TIME = '2026-05-13T20:30:00';
+const BUILD_LABEL = 'v4.1-sellingExp+clearYear';
 
 // ===== CONFIG =====
 const FB_CFG = {
@@ -824,7 +824,10 @@ function renderDashboard(){
   }
   return `<div class="wrap">
     <div class="dash-hdr">
-      <div class="dash-title">รายการบริษัท</div>
+      <div>
+        <div class="dash-title">รายการบริษัท</div>
+        <div style="font-size:10px;color:var(--gray);margin-top:2px">${BUILD_LABEL} · แก้ไข ${BUILD_TIME.replace('T',' ')}</div>
+      </div>
       <button class="btn btn-primary" onclick="showAddCompanyModal()">+ เพิ่มบริษัท</button>
     </div>
     ${cards}
@@ -858,8 +861,10 @@ function renderEditor(){
     const active=yr===S.currentYear?'active':'';
     timelineHtml+=`<div class="ty ${active}" onclick="selectYear('${yr}')">
       <span>${yr}</span>
-      <span class="ty-st ${st}">${st==='final'?'Final':'Draft'}</span>
-      <button class="ty-del" onclick="event.stopPropagation();confirmClearYear('${S.currentCo}','${yr}')" title="ล้างข้อมูล / ลบปีนี้">✕</button>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span class="ty-st ${st}">${st==='final'?'Final':'Draft'}</span>
+        <button class="ty-del" onclick="event.stopPropagation();confirmClearYear('${S.currentCo}','${yr}')" title="ล้างข้อมูล / ลบปีนี้">🗑</button>
+      </div>
     </div>`;
   });
 
