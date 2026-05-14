@@ -273,8 +273,8 @@ select.fc{cursor:pointer}
 
 <script>
 'use strict';
-const BUILD_TIME = '2026-05-13 23:55 (ไทย)';
-const BUILD_LABEL = 'v4.8-balanceHighlight';
+const BUILD_TIME = '2026-05-14 23:00 (ไทย)';
+const BUILD_LABEL = 'v4.9-clientPDF';
 
 // ===== CONFIG =====
 const FB_CFG = {
@@ -4271,7 +4271,7 @@ function _doExportExcel(co,yd){
   toast('Export Excel แล้ว','ok');
 }
 
-// ===== PDF EXPORT =====
+// ===== PDF EXPORT (Client-side — ไม่ต้องใช้ server.py) =====
 async function exportPDF(){
   const co=getCompany(S.currentCo);
   const yd=getYearData(S.currentCo,S.currentYear);
@@ -4280,14 +4280,13 @@ async function exportPDF(){
   if(checks.some(c=>c.status!=='ok')){showValidationModal(()=>exportPDF());return;}
   await _doExportPDF(co,yd);
 }
+
 async function _doExportPDF(co,yd){
   const settings=Object.assign(defaultSettings(),yd.settings||{});
   const draft=Object.assign(defaultDraft(),yd.draft||{});
   const base=Object.assign(defaultBase(),yd.base||{});
   const res=compute(draft,settings);
   const baseRes=computeBase(base);
-
-  // Get previous year data if available
   const prevYr=getPrevYear(S.currentCo,S.currentYear);
   let prevData=null;
   if(prevYr){
@@ -4298,41 +4297,202 @@ async function _doExportPDF(co,yd){
       prevData={year:prevYr,base:pb,pl:pr.pl,bs:pr.bs};
     }
   }
-
   const cfInput=Object.assign(defaultCF(),yd.cf||{});
   const cfCalc=computeCF(base,draft,settings,cfInput,res);
-  const payload={
-    company:co,
-    year:S.currentYear,
-    prevYear:prevYr||null,
-    current:{
-      draft:res.d,
-      settings,
-      pl:res.pl,
-      bs:res.bs
-    },
-    prev:prevData,
-    cf:cfCalc
-  };
 
   toast('กำลังสร้าง PDF...','');
-  try{
-    const resp=await fetch(PDF_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
+
+  // โหลด html2pdf.js จาก CDN ถ้ายังไม่มี
+  if(!window.html2pdf){
+    await new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      s.onload=resolve;
+      s.onerror=()=>reject(new Error('โหลด html2pdf.js ไม่สำเร็จ'));
+      document.head.appendChild(s);
     });
-    if(!resp.ok)throw new Error(`Server error: ${resp.status}`);
-    const blob=await resp.blob();
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.download=`ProForma_${co?.name||''}_${S.currentYear}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('Export PDF แล้ว','ok');
+  }
+
+  const cn=co?.name||'';
+  const yr=S.currentYear;
+  const pl=res.pl;const bs=res.bs;const kpi=res.kpi;
+  const bPL=baseRes.pl;const bBS=baseRes.bs;
+
+  function fmtB(v){
+    if(v===null||v===undefined)return'-';
+    const a=Math.abs(v);
+    const s=a.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+    return v<0?`(${s})`:s;
+  }
+  function row(label,val,bval,bold=false){
+    const fw=bold?'font-weight:700;':'';
+    const bg=bold?'background:#F0F4F8;':'';
+    return`<tr style="${bg}">
+      <td style="padding:5px 10px;font-size:11px;${fw}">${label}</td>
+      <td style="padding:5px 10px;text-align:right;font-family:monospace;font-size:11px;${fw}${val<0?'color:#DC2626':''}">${fmtB(val)}</td>
+      ${prevData?`<td style="padding:5px 10px;text-align:right;font-family:monospace;font-size:11px;color:#6B7280">${fmtB(bval)}</td>`:''}
+    </tr>`;
+  }
+  function secRow(label){
+    return`<tr style="background:#1E3A5F"><td colspan="${prevData?3:2}" style="padding:5px 10px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px;text-transform:uppercase">${label}</td></tr>`;
+  }
+  const prevHdr=prevData?`<th style="padding:6px 10px;text-align:right;font-size:10px;color:#fff">ปี ${prevData.year}</th>`:'';
+
+  const html=`
+  <div style="font-family:'Sarabun',sans-serif;padding:20px;color:#1F2937;max-width:750px;margin:0 auto">
+
+    <div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #1E3A5F;padding-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:#1E3A5F">${cn}</div>
+      <div style="font-size:12px;color:#6B7280;margin-top:4px">งบการเงินประมาณการเพื่อประกอบการพิจารณาสินเชื่อเท่านั้น</div>
+      <div style="font-size:11px;color:#6B7280">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}</div>
+      <div style="font-size:10px;color:#9CA3AF;margin-top:6px">จัดทำโดย S.P.N. Corporate Services · ${BUILD_LABEL} · ${new Date().toLocaleDateString('th-TH')}</div>
+    </div>
+
+    <!-- KPI -->
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      ${[
+        ['Net Margin',fmtB(kpi.netMargin)+'%',kpi.netMargin>=5?'#16A34A':'#DC2626'],
+        ['Gross Margin',fmtB(kpi.grossMargin)+'%',kpi.grossMargin>=20?'#16A34A':'#D97706'],
+        ['D/E Ratio',kpi.de.toFixed(2)+' เท่า',kpi.de<=2?'#16A34A':'#DC2626'],
+        ['Current Ratio',kpi.currentRatio.toFixed(2)+' เท่า',kpi.currentRatio>=1?'#16A34A':'#DC2626'],
+      ].map(([l,v,c])=>`
+        <div style="flex:1;min-width:120px;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;text-align:center">
+          <div style="font-size:10px;color:#6B7280">${l}</div>
+          <div style="font-size:16px;font-weight:700;color:${c}">${v}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- P&L -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#1E3A5F;border-bottom:2px solid #1E3A5F;padding-bottom:4px;margin-bottom:6px">งบกำไรขาดทุนเบ็ดเสร็จ</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#1E3A5F">
+          <th style="padding:6px 10px;text-align:left;font-size:10px;color:#fff">รายการ</th>
+          <th style="padding:6px 10px;text-align:right;font-size:10px;color:#fff">ปี ${yr} (ร่าง)</th>
+          ${prevHdr}
+        </tr></thead>
+        <tbody>
+          ${secRow('รายได้')}
+          ${row('รายได้จากการขาย/รับเหมา',res.d.rev,prevData?.base.rev)}
+          ${row('รายได้อื่น',res.d.otherRev,prevData?.base.otherRev)}
+          ${row('รวมรายได้',pl.totalRev,prevData?bPL.totalRev:null,true)}
+          ${secRow('ค่าใช้จ่าย')}
+          ${row('ต้นทุนขาย/ต้นทุนก่อสร้าง',res.d.cogs,prevData?.base.cogs)}
+          ${row('ค่าใช้จ่ายในการขาย',res.d.sellingExp,prevData?.base.sellingExp)}
+          ${row('ค่าใช้จ่ายในการบริหาร',res.d.admin,prevData?.base.admin)}
+          ${row('กำไรขั้นต้น',pl.grossProfit,prevData?bPL.grossProfit:null,true)}
+          ${row('ค่าเสื่อมราคา',res.d.depExp,prevData?.base.depExp)}
+          ${row('EBIT',pl.ebit,prevData?bPL.ebit:null,true)}
+          ${row('ดอกเบี้ยจ่าย',res.d.interestExp,prevData?.base.interestExp)}
+          ${row('กำไรก่อนหักภาษี (PBT)',pl.pbt,prevData?bPL.pbt:null,true)}
+          ${row('ภาษีเงินได้นิติบุคคล',pl.tax,prevData?bPL.tax:null)}
+          ${row('กำไรสุทธิ',pl.netIncome,prevData?bPL.netIncome:null,true)}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- BS -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#1E3A5F;border-bottom:2px solid #1E3A5F;padding-bottom:4px;margin-bottom:6px">งบฐานะการเงิน ณ วันที่ 31 ธันวาคม ${yr}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#1E3A5F"><th colspan="2" style="padding:6px 10px;text-align:left;font-size:10px;color:#fff">สินทรัพย์</th></tr></thead>
+          <tbody>
+            ${secRow('สินทรัพย์หมุนเวียน')}
+            ${row('เงินสด',bs.cash)}
+            ${row('ลูกหนี้การค้า',res.d.ar)}
+            ${row('ลูกหนี้เงินกู้',res.d.loanAr)}
+            ${row('สินค้าคงเหลือ',res.d.inventory)}
+            ${row('สินทรัพย์หมุนเวียนอื่น',res.d.oca)}
+            ${row('รวมสินทรัพย์หมุนเวียน',bs.currentAssets,null,true)}
+            ${secRow('สินทรัพย์ไม่หมุนเวียน')}
+            ${row('ที่ดิน อาคาร อุปกรณ์ — สุทธิ',res.d.ppe)}
+            ${row('สินทรัพย์ไม่มีตัวตน',res.d.intangible)}
+            ${row('รวมสินทรัพย์ไม่หมุนเวียน',bs.nonCurrentAssets,null,true)}
+            ${row('รวมสินทรัพย์',bs.totalAssets,null,true)}
+          </tbody>
+        </table>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#1E3A5F"><th colspan="2" style="padding:6px 10px;text-align:left;font-size:10px;color:#fff">หนี้สินและส่วนของผู้ถือหุ้น</th></tr></thead>
+          <tbody>
+            ${secRow('หนี้สินหมุนเวียน')}
+            ${row('เจ้าหนี้การค้า',res.d.ap)}
+            ${row('เงินกู้ระยะสั้น',res.d.shortLoan)}
+            ${row('เงินกู้ระยะยาว (ถึงกำหนด 1 ปี)',res.d.longLoan)}
+            ${row('ภาษีค้างจ่าย',res.d.taxPay)}
+            ${row('หนี้สินหมุนเวียนอื่น',res.d.ocl)}
+            ${row('รวมหนี้สินหมุนเวียน',bs.currentLiab,null,true)}
+            ${secRow('หนี้สินไม่หมุนเวียน')}
+            ${row('เงินกู้ระยะยาว (ไม่หมุนเวียน)',res.d.longLoanNC)}
+            ${row('เงินกู้กรรมการ/ผู้ถือหุ้น',res.d.directorLoan)}
+            ${row('รวมหนี้สินไม่หมุนเวียน',bs.nonCurrentLiab,null,true)}
+            ${row('รวมหนี้สิน',bs.totalLiab,null,true)}
+            ${secRow('ส่วนของผู้ถือหุ้น')}
+            ${row('ทุนชำระแล้ว',res.d.capital)}
+            ${row('กำไรสะสม',bs.reEnd)}
+            ${row('รวมส่วนของผู้ถือหุ้น',bs.totalEquity,null,true)}
+            ${row('รวมหนี้สินและส่วนผู้ถือหุ้น',bs.totalLiabEq,null,true)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cash Flow -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#1E3A5F;border-bottom:2px solid #1E3A5F;padding-bottom:4px;margin-bottom:6px">งบกระแสเงินสด (วิธีทางอ้อม)</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#1E3A5F">
+          <th style="padding:6px 10px;text-align:left;font-size:10px;color:#fff">รายการ</th>
+          <th style="padding:6px 10px;text-align:right;font-size:10px;color:#fff">ปี ${yr}</th>
+        </tr></thead>
+        <tbody>
+          ${secRow('กระแสเงินสดจากกิจกรรมดำเนินงาน')}
+          ${row('กำไรสุทธิ',cfCalc.netIncome)}
+          ${row('บวก: ค่าเสื่อมราคา',cfCalc.dep)}
+          ${row('ลูกหนี้การค้า (เพิ่ม)/ลด',-cfCalc.dAR)}
+          ${row('สินค้าคงเหลือ (เพิ่ม)/ลด',-cfCalc.dInventory)}
+          ${row('เจ้าหนี้การค้า เพิ่ม/(ลด)',cfCalc.dAP)}
+          ${row('จ่ายดอกเบี้ย',cfCalc.interestPaid)}
+          ${row('เงินสดสุทธิจากกิจกรรมดำเนินงาน',cfCalc.opCF,null,true)}
+          ${secRow('กระแสเงินสดจากกิจกรรมลงทุน')}
+          ${row('จ่ายซื้อ/รับจาก PPE',cfCalc.invCF)}
+          ${row('เงินสดสุทธิจากกิจกรรมลงทุน',cfCalc.invCF,null,true)}
+          ${secRow('กระแสเงินสดจากกิจกรรมจัดหาเงิน')}
+          ${row('เงินกู้ระยะสั้น เพิ่ม/(ลด)',cfCalc.dShortLoan)}
+          ${row('เงินกู้กรรมการ เพิ่ม/(ลด)',cfCalc.dDirectorLoan)}
+          ${row('เงินสดสุทธิจากกิจกรรมจัดหาเงิน',cfCalc.finCF,null,true)}
+          ${row('เงินสดเพิ่ม (ลด) สุทธิ',cfCalc.netCF,null,true)}
+          ${row('เงินสดต้นปี',cfCalc.beginCash)}
+          ${row('เงินสดปลายปี',cfCalc.endCash,null,true)}
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:24px;padding-top:12px;border-top:1px solid #E5E7EB;font-size:9px;color:#9CA3AF;text-align:center">
+      งบการเงินนี้จัดทำขึ้นเพื่อประกอบการพิจารณาสินเชื่อเท่านั้น ไม่ใช่งบการเงินที่ผ่านการตรวจสอบโดยผู้สอบบัญชีรับอนุญาต<br>
+      S.P.N. Corporate Services · ${BUILD_LABEL} · พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')}
+    </div>
+  </div>`;
+
+  const container=document.createElement('div');
+  container.innerHTML=html;
+  document.body.appendChild(container);
+
+  try{
+    await html2pdf().set({
+      margin:[10,10,10,10],
+      filename:`ProForma_${cn}_${yr}.pdf`,
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,letterRendering:true},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      pagebreak:{mode:['avoid-all','css','legacy']}
+    }).from(container).save();
+    toast('Export PDF แล้ว ✓','ok');
   }catch(e){
-    toast('ไม่สามารถสร้าง PDF ได้ — ตรวจสอบว่า server.py กำลังรันอยู่ที่ port 5055','err');
+    toast('สร้าง PDF ไม่สำเร็จ: '+e.message,'err');
     console.error(e);
+  }finally{
+    document.body.removeChild(container);
   }
 }
 
