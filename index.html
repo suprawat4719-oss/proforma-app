@@ -3809,10 +3809,10 @@ function printFullStatement(co,yd,bRes,dRes,cfRes,fd){
     <tr><td>ภาษีรอตัดบัญชี</td><td style="text-align:right">${fv(N(pd.deferredTax))}</td></tr>
   </tbody></table>
 
-  ${nt.note1?`<h3>หมายเหตุ 1 — ข้อมูลทั่วไป</h3><p style="font-size:9pt">${nt.note1.replace(/\n/g,'<br>')}</p>`:''}
-  ${nt.note10?`<h3>หมายเหตุ 10 — ภาระผูกพัน</h3><p style="font-size:9pt">${nt.note10.replace(/\n/g,'<br>')}</p>`:''}
-  ${nt.note11?`<h3>หมายเหตุ 11 — เหตุการณ์ภายหลัง</h3><p style="font-size:9pt">${nt.note11.replace(/\n/g,'<br>')}</p>`:''}
-  ${nt.auditor?`<h3>หมายเหตุผู้สอบบัญชี</h3><p style="font-size:9pt">${nt.auditor.replace(/\n/g,'<br>')}</p>`:''}
+  ${nt.note1?`<h3>หมายเหตุ 1 — ข้อมูลทั่วไป</h3><p style="font-size:9pt">${nt.note1.split('\n').join('<br>')}</p>`:''}
+  ${nt.note10?`<h3>หมายเหตุ 10 — ภาระผูกพัน</h3><p style="font-size:9pt">${nt.note10.split('\n').join('<br>')}</p>`:''}
+  ${nt.note11?`<h3>หมายเหตุ 11 — เหตุการณ์ภายหลัง</h3><p style="font-size:9pt">${nt.note11.split('\n').join('<br>')}</p>`:''}
+  ${nt.auditor?`<h3>หมายเหตุผู้สอบบัญชี</h3><p style="font-size:9pt">${nt.auditor.split('\n').join('<br>')}</p>`:''}
 
   <p style="font-size:8pt;text-align:center;margin-top:20px;color:#666">สร้างโดย AI Financial Statement Builder — S.P.N. Corporate Services</p>
   </body></html>`;
@@ -4523,8 +4523,7 @@ function _doExportPDF(co,yd){
     <h2>สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}</h2>
   </div>
 
-  ${nt.note1?`<h3>หมายเหตุ 1 — ข้อมูลทั่วไป</h3><p style="font-size:9pt;line-height:1.6">${nt.note1.replace(/
-/g,'<br>')}</p>`:''}
+  ${nt.note1?`<h3>หมายเหตุ 1 — ข้อมูลทั่วไป</h3><p style="font-size:9pt;line-height:1.6">${nt.note1.split(String.fromCharCode(10)).join('<br>')}</p>`:''}
 
   <h3>หมายเหตุ 2 — เกณฑ์ในการจัดทำงบการเงิน</h3>
   <p style="font-size:9pt;line-height:1.6">งบการเงินนี้จัดทำขึ้นตามมาตรฐานการรายงานทางการเงินสำหรับกิจการที่ไม่มีส่วนได้เสียสาธารณะ (ฉบับปรับปรุง 2565) ที่ออกโดยสภาวิชาชีพบัญชี โดยแสดงรายการในงบการเงินตามข้อกำหนดในประกาศกรมพัฒนาธุรกิจการค้า เรื่อง กำหนดรายการย่อที่ต้องมีในงบการเงิน พ.ศ. 2566</p>
@@ -4572,10 +4571,8 @@ function _doExportPDF(co,yd){
     <tr class="total"><td>ภาษีเงินได้นิติบุคคลค้างจ่าย</td><td>${fv(pl.tax-N(pd.taxWHTPaid)-N(pd.taxPrepaid))}</td></tr>
   </tbody></table>
 
-  ${nt.note10?`<h3>หมายเหตุ — ภาระผูกพัน</h3><p style="font-size:9pt;line-height:1.6">${nt.note10.replace(/
-/g,'<br>')}</p>`:''}
-  ${nt.note11?`<h3>หมายเหตุ — เหตุการณ์ภายหลังวันที่ในงบการเงิน</h3><p style="font-size:9pt;line-height:1.6">${nt.note11.replace(/
-/g,'<br>')}</p>`:''}
+  ${nt.note10?`<h3>หมายเหตุ — ภาระผูกพัน</h3><p style="font-size:9pt;line-height:1.6">${nt.note10.split(String.fromCharCode(10)).join('<br>')}</p>`:''}
+  ${nt.note11?`<h3>หมายเหตุ — เหตุการณ์ภายหลังวันที่ในงบการเงิน</h3><p style="font-size:9pt;line-height:1.6">${nt.note11.split(String.fromCharCode(10)).join('<br>')}</p>`:''}
 
   <h3>หมายเหตุ 9 — การอนุมัติงบการเงิน</h3>
   <p style="font-size:9pt">งบการเงินนี้ได้รับอนุมัติให้ออกโดยกรรมการผู้มีอำนาจของบริษัทฯ แล้ว</p>
