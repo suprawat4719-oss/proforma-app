@@ -1773,7 +1773,8 @@ function renderFullStatementTab(yd){
 
   <div class="xbar">
     <button class="btn btn-success" onclick="exportFullStatementExcel()">⬇ Export Full Excel</button>
-    <button class="btn btn-primary" onclick="exportFullStatementPDF()">📋 Export Full PDF</button>
+    <button class="btn btn-secondary" onclick="exportFullStatementPDF()">📋 Export PDF รายงานภายใน</button>
+    <button class="btn btn-amber" onclick="exportFullFinancialStatementPDF()" title="Export งบการเงินจริงเปรียบเทียบ 2 ปี">🏛 Export PDF งบการเงินจริง</button>
     <button class="btn btn-secondary" onclick="saveFullData()">💾 บันทึก</button>
   </div>`;
 }
@@ -4494,6 +4495,813 @@ async function _doExportPDF(co,yd){
   }finally{
     document.body.removeChild(container);
   }
+}
+
+// ===== COMPARATIVE FINANCIAL STATEMENT PDF (งบการเงินจริง 2 ปี) =====
+
+function getComparativeYears(cId, selectedYear) {
+  // บังคับ: prevYear ต้องเป็น selectedYear - 1 เท่านั้น (ไม่ใช่ปีใดก็ได้ใน array)
+  const currentYear = String(selectedYear);
+  const prevYearStr = String(Number(currentYear) - 1);
+  const prevYearData = getYearData(cId, prevYearStr);
+  const prevYear = prevYearData ? prevYearStr : null;
+  return { currentYear, prevYear, prevYearStr };
+}
+
+function formatAccountingNumber(v) {
+  if (v === null || v === undefined || !isFinite(v) || v === 0) return '-';
+  const abs = Math.abs(v);
+  const s = abs.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return v < 0 ? `(${s})` : s;
+}
+
+function buildFullStatementPayload(cId, selectedYear) {
+  const co = getCompany(cId);
+  const { currentYear, prevYear } = getComparativeYears(cId, selectedYear);
+  const ydCurrent = getYearData(cId, currentYear);
+  const ydPrev = prevYear ? getYearData(cId, prevYear) : null;
+  if (!ydCurrent) return null;
+
+  const draftCurrent = Object.assign(defaultDraft(), ydCurrent.draft || {});
+  const settingsCurrent = Object.assign(defaultSettings(), ydCurrent.settings || {});
+  const draftResCurrent = compute(draftCurrent, settingsCurrent);
+
+  const basePrev = ydPrev ? Object.assign(defaultBase(), ydPrev.base || {}) : null;
+  const resPrev = basePrev ? computeBase(basePrev) : null;
+
+  const cfInput = Object.assign(defaultCF(), ydCurrent.cf || {});
+  const cfCalc = computeCF(
+    Object.assign(defaultBase(), ydCurrent.base || {}),
+    draftCurrent, settingsCurrent, cfInput, draftResCurrent
+  );
+
+  const fdCurrent = Object.assign(defaultFullData(), ydCurrent.fullData || {});
+  const fdPrev = ydPrev ? Object.assign(defaultFullData(), ydPrev.fullData || {}) : null;
+  const notesCurrent = Object.assign(defaultNotes(), ydCurrent.notes || {});
+  const isDraft = ydCurrent.status !== 'final';
+
+  return {
+    co, currentYear, prevYear,
+    basePrev, resPrev,
+    draftResCurrent, cfCalc,
+    fdCurrent, fdPrev, notesCurrent, isDraft,
+    ydCurrent, ydPrev
+  };
+}
+
+async function exportFullFinancialStatementPDF() {
+  const cId = S.currentCo;
+  const selectedYear = S.currentYear;
+  const { currentYear, prevYear, prevYearStr } = getComparativeYears(cId, selectedYear);
+
+  if (!prevYear) {
+    showModal(`
+      <div class="mh"><div class="mt">ไม่พบข้อมูลปี ${prevYearStr}</div><button class="mc" onclick="closeModal()">✕</button></div>
+      <p style="font-size:13px;margin-bottom:14px;color:#374151">
+        งบเปรียบเทียบต้องใช้ปี <b>${currentYear}</b> และ <b>${prevYearStr}</b> เท่านั้น<br>
+        แต่ยังไม่พบข้อมูลปี <b>${prevYearStr}</b> ในระบบ
+      </p>
+      <p style="font-size:12px;color:var(--gray)">กรุณาเพิ่มปี ${prevYearStr} และกรอกข้อมูลปีฐาน (แท็บ A) ก่อน Export</p>
+      <div class="mf"><button class="btn btn-primary" onclick="closeModal()">ตกลง</button></div>`);
+    return;
+  }
+
+  const ydCurr = getYearData(cId, currentYear);
+  const ydPrev = getYearData(cId, prevYear);
+  if (!ydCurr) { toast('ไม่มีข้อมูลปีปัจจุบัน', 'err'); return; }
+  syncFullDataToFinancials(ydCurr);
+
+  const dCurr = Object.assign(defaultDraft(), ydCurr.draft || {});
+  const sCurr = Object.assign(defaultSettings(), ydCurr.settings || {});
+  const rCurr = compute(dCurr, sCurr);
+  const bPrev = ydPrev ? Object.assign(defaultBase(), ydPrev.base || {}) : null;
+  const rPrev = bPrev ? computeBase(bPrev) : null;
+
+  const diffCurr = Math.abs(rCurr.bs.totalAssets - rCurr.bs.totalLiabEq);
+  const diffPrev = rPrev ? Math.abs(rPrev.bs.totalAssets - rPrev.bs.totalLiabEq) : 0;
+  const isDraft = ydCurr.status !== 'final';
+
+  // Watermark logic: draft status OR BS imbalance
+  let draftWatermark = isDraft
+    ? 'งบการเงินประมาณการ – สำหรับการพิจารณาภายในเท่านั้น'
+    : 'งบการเงิน';
+
+  if (diffCurr > 1 || diffPrev > 1) {
+    const msgs = [];
+    if (diffCurr > 1) msgs.push(`ปี ${currentYear}: สินทรัพย์ไม่เท่ากับหนี้สิน+ทุน (ส่วนต่าง ${formatAccountingNumber(diffCurr)} บาท)`);
+    if (diffPrev > 1) msgs.push(`ปี ${prevYear}: สินทรัพย์ไม่เท่ากับหนี้สิน+ทุน (ส่วนต่าง ${formatAccountingNumber(diffPrev)} บาท)`);
+    _pendingExportFn = () => _doExportFullFinancialStatementPDF('ฉบับร่างเพื่อการตรวจสอบ');
+    showModal(`
+      <div class="mh"><div class="mt">⚠ งบดุลไม่สมดุล</div><button class="mc" onclick="closeModal()">✕</button></div>
+      <p style="font-size:13px;margin-bottom:12px;color:#374151">${msgs.join('<br>')}</p>
+      <p style="font-size:12px;color:var(--gray)">ต้องการ Export ต่อไหม? จะใส่ข้อความ "ฉบับร่างเพื่อการตรวจสอบ" ในงบ</p>
+      <div class="mf">
+        <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn btn-amber" onclick="proceedExport()">Export ต่อ (ฉบับร่าง)</button>
+      </div>`);
+    return;
+  }
+  await _doExportFullFinancialStatementPDF(draftWatermark);
+}
+
+async function _doExportFullFinancialStatementPDF(draftWatermark) {
+  closeModal();
+  const cId = S.currentCo;
+  const payload = buildFullStatementPayload(cId, S.currentYear);
+  if (!payload) { toast('ไม่มีข้อมูล', 'err'); return; }
+
+  toast('กำลังสร้าง PDF งบการเงินจริง...', '');
+
+  const cn = payload.co?.name || '';
+  const yr1 = payload.currentYear, yr0 = payload.prevYear;
+  const innerHTML = renderFinancialStatementHTML(payload, draftWatermark);
+  const filename = `งบการเงิน_${cn}_${yr1}_${yr0}.pdf`;
+
+  // Option A: try PDF_URL server (mode: financial_statement_pdf)
+  try {
+    const resp = await fetch(PDF_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'financial_statement_pdf',
+        html: innerHTML,
+        css: getFinancialStatementCSS(),
+        company: payload.co,
+        currentYear: yr1,
+        prevYear: yr0
+      })
+    });
+    if (resp.ok) {
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+      toast('Export PDF งบการเงินจริง สำเร็จ ✓', 'ok');
+      return;
+    }
+  } catch (_) { /* server ไม่ตอบ → ใช้ html2pdf fallback */ }
+
+  // Option B: html2pdf.js client-side
+  if (!window.html2pdf) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('โหลด html2pdf.js ไม่สำเร็จ'));
+      document.head.appendChild(s);
+    });
+  }
+
+  // Inject CSS into head once per session
+  if (!document.getElementById('fs-print-style')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'fs-print-style';
+    styleEl.textContent = getFinancialStatementCSS();
+    document.head.appendChild(styleEl);
+  }
+
+  const container = document.createElement('div');
+  container.className = 'fs-doc';
+  container.style.cssText = 'position:absolute;left:-9999px;top:0;width:170mm;background:#fff;padding:0;margin:0';
+  container.innerHTML = innerHTML;
+  document.body.appendChild(container);
+
+  try {
+    await html2pdf().set({
+      margin: [15, 20, 15, 20],
+      filename,
+      image: { type: 'jpeg', quality: 0.97 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, windowWidth: 794 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['.no-break'] }
+    }).from(container).save();
+    toast('Export PDF งบการเงินจริง สำเร็จ ✓', 'ok');
+  } catch (e) {
+    toast('สร้าง PDF ไม่สำเร็จ: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+function getFinancialStatementCSS() {
+  return `
+    *{box-sizing:border-box}
+    .fs-doc{font-family:'Sarabun','TH Sarabun New',Arial,sans-serif;font-size:10pt;color:#000;line-height:1.5;width:170mm;margin:0 auto;background:#fff}
+    /* Cover page */
+    .fs-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240mm;text-align:center;padding:20mm 10mm}
+    .fs-cover-name{font-size:16pt;font-weight:700;margin-bottom:6px}
+    .fs-cover-taxid{font-size:9pt;color:#333;margin-bottom:4px}
+    .fs-cover-addr{font-size:8.5pt;color:#444;margin-bottom:16px;line-height:1.6}
+    .fs-cover-line{width:120mm;border:none;border-top:2px solid #000;margin:14px auto}
+    .fs-cover-title{font-size:14pt;font-weight:700;margin-bottom:6px}
+    .fs-cover-period{font-size:10pt;color:#222;margin-bottom:10px}
+    .fs-cover-biz{font-size:9pt;color:#555;margin-bottom:10px}
+    .fs-cover-draft{font-size:9pt;color:#6D28D9;border:1px solid #6D28D9;padding:3px 14px;border-radius:4px;margin-top:10px;display:inline-block}
+    .fs-cover-preparer{font-size:8pt;color:#888;margin-top:30px}
+    /* Section headers */
+    .fs-co-name{font-size:12.5pt;font-weight:700;text-align:center}
+    .fs-co-sub{font-size:8pt;text-align:center;color:#333;margin-top:1px}
+    .fs-stmt-title{font-size:11pt;font-weight:700;text-align:center;margin:5px 0 2px}
+    .fs-stmt-period{font-size:9pt;text-align:center;color:#222}
+    .fs-draft-badge{display:inline-block;font-size:7.5pt;color:#6D28D9;border:1px solid #6D28D9;padding:1px 8px;border-radius:3px;margin-top:4px}
+    .fs-unit{font-size:8pt;color:#555;text-align:right;margin:3px 0}
+    .fs-footer-note{font-size:8pt;color:#555;font-style:italic;margin-top:5px}
+    .fs-hline{border:none;border-top:1.5px solid #000;margin:5px 0;display:block}
+    /* Tables */
+    .fs-doc table{width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:2px}
+    .fs-thead th{padding:4px 6px;text-align:right;font-weight:700;font-size:8.5pt;border-bottom:1.5px solid #000;border-top:1.5px solid #000;vertical-align:bottom}
+    .fs-left{text-align:left !important}
+    .fs-right{text-align:right}
+    .fs-note-col{text-align:center;font-size:8pt;color:#444}
+    .fs-r-section td{font-weight:700;padding:7px 6px 2px;font-size:9.5pt}
+    .fs-r-item td{padding:2px 6px}
+    .fs-r-item td.fs-left{padding-left:22px}
+    .fs-r-sub td{font-weight:600;border-top:0.75px solid #888;padding:3px 6px}
+    .fs-r-sub td.fs-left{padding-left:6px}
+    .fs-r-total td{font-weight:700;border-top:1.5px solid #000;border-bottom:2px double #000;padding:4px 6px;background:#f8f8f8}
+    /* Page breaks */
+    .page-break{page-break-before:always;display:block;height:1px;margin:0}
+    .no-break{page-break-inside:avoid}
+    /* Signature */
+    .fs-sig-row{display:flex;gap:40px;margin-top:36px;justify-content:center}
+    .fs-sig-box{text-align:center;min-width:160px}
+    .fs-sig-line{border-bottom:1px solid #000;margin-bottom:4px;height:36px}
+    .fs-sig-name{font-size:9pt}
+    .fs-sig-role{font-size:8pt;color:#555}
+    .fs-sig-date{font-size:7.5pt;color:#888;margin-top:2px}
+    /* Notes */
+    .fs-note-sec{margin-bottom:14px}
+    .fs-note-title{font-weight:700;font-size:9.5pt;margin-bottom:5px;border-bottom:0.5px solid #ccc;padding-bottom:2px}
+    .fs-note-body{font-size:9pt;line-height:1.6}
+    .fs-note-body p{margin-bottom:4px}
+    .fs-itbl{width:auto;font-size:8.5pt}
+    .fs-itbl th{padding:3px 8px;text-align:right;font-size:8pt;border-bottom:1px solid #888;border-top:1px solid #888;font-weight:700}
+    .fs-itbl th.fs-left{text-align:left}
+    .fs-itbl td{padding:2px 8px}
+    .fs-itbl td.fs-left{padding-left:14px}
+    .fs-itbl .fs-r-sub td{border-top:0.75px solid #888;font-weight:600}
+  `;
+}
+
+function renderFinancialStatementHTML(payload, draftWatermark) {
+  const { co, currentYear, prevYear, basePrev, resPrev,
+          draftResCurrent, fdCurrent, fdPrev, notesCurrent, isDraft } = payload;
+
+  const N = v => v || 0;
+  const H = !!prevYear; // has comparative year
+  const cn = co?.name || '';
+  const taxId = co?.taxId || '';
+  const addr = co?.address || '';
+  const director = co?.director || '';
+  const bizType = co?.businessType || '';
+
+  const pl1 = draftResCurrent.pl;
+  const bs1 = draftResCurrent.bs;
+  const d1 = draftResCurrent.d;
+  const pl0 = resPrev ? resPrev.pl : null;
+  const bs0 = resPrev ? resPrev.bs : null;
+  const b0 = basePrev;
+
+  const fd1 = fdCurrent;
+  const pd1 = fd1.plDetail || {};
+  const bd1 = fd1.bsDetail || {};
+  const eq1 = fd1.equityChanges || {};
+  const eq0 = fdPrev ? (fdPrev.equityChanges || {}) : null;
+  const nt1 = fd1.notesText || {};
+  const pol = notesCurrent.accountingPolicies || {};
+  const ppeDetail1 = (bd1.ppeDetail || []).filter(r => r && (r.name || r.label));
+  const adminLines1 = (pd1.adminLines || []).filter(l => l && (l.name || l.label));
+  // fdPrev note data
+  const pd0 = fdPrev ? (fdPrev.plDetail || {}) : {};
+  const bd0 = fdPrev ? (fdPrev.bsDetail || {}) : {};
+  const nt0 = fdPrev ? (fdPrev.notesText || {}) : {};
+  const adminLines0 = (pd0.adminLines || []).filter(l => l && (l.name || l.label));
+  const ppeDetail0 = (bd0.ppeDetail || []).filter(r => r && (r.name || r.label));
+
+  // ---- format helpers ----
+  function fv(v) {
+    if (v === null || v === undefined || !isFinite(v) || v === 0) return '-';
+    const abs = Math.abs(v);
+    const s = abs.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return v < 0 ? `(${s})` : s;
+  }
+  function fvt(v) { // always show, even 0
+    const abs = Math.abs(v || 0);
+    const s = abs.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (v || 0) < 0 ? `(${s})` : s;
+  }
+  function escH(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ---- standard 4-col row (label | note | yr1 | yr0) ----
+  function trow(label, noteNum, v1, v0, extraStyle) {
+    const style = extraStyle ? ` style="${extraStyle}"` : '';
+    return `<tr class="fs-r-item"${style}>
+      <td class="fs-left">${label}</td>
+      <td class="fs-note">${noteNum || ''}</td>
+      <td class="fs-right">${fv(v1)}</td>
+      ${H ? `<td class="fs-right">${fv(v0)}</td>` : ''}
+    </tr>`;
+  }
+  function trow_sub(label, v1, v0, noteNum) {
+    return `<tr class="fs-r-sub">
+      <td class="fs-left">${label}</td>
+      <td class="fs-note">${noteNum || ''}</td>
+      <td class="fs-right">${fvt(v1)}</td>
+      ${H ? `<td class="fs-right">${fvt(v0)}</td>` : ''}
+    </tr>`;
+  }
+  function trow_total(label, v1, v0) {
+    return `<tr class="fs-r-total">
+      <td class="fs-left" colspan="2">${label}</td>
+      <td class="fs-right">${fvt(v1)}</td>
+      ${H ? `<td class="fs-right">${fvt(v0)}</td>` : ''}
+    </tr>`;
+  }
+  function trow_section(label) {
+    return `<tr class="fs-r-section"><td class="fs-left" colspan="${H ? 4 : 3}"><b>${label}</b></td></tr>`;
+  }
+
+  const colgroup = `<colgroup>
+    <col style="width:${H ? '52' : '68'}%">
+    <col style="width:7%">
+    <col style="width:${H ? '20.5' : '25'}%">
+    ${H ? '<col style="width:20.5%">' : ''}
+  </colgroup>`;
+
+  const thead = `<thead><tr class="fs-thead">
+    <th class="fs-left">รายการ</th>
+    <th class="fs-left" style="font-size:7.5pt">หมายเหตุ</th>
+    <th>${currentYear}</th>
+    ${H ? `<th>${prevYear}</th>` : ''}
+  </tr></thead>`;
+
+  // ---- Balance sheet values ----
+  const cash1 = N(bs1.cash);
+  const cash0 = b0 ? N(b0.cash) : 0;
+  const ar1 = N(d1.ar), ar0 = b0 ? N(b0.ar) : 0;
+  const loanAr1 = N(d1.loanAr), loanAr0 = b0 ? N(b0.loanAr) : 0;
+  const inv1 = N(d1.inventory), inv0 = b0 ? N(b0.inventory) : 0;
+  const oca1 = N(d1.oca), oca0 = b0 ? N(b0.oca) : 0;
+  const dep1 = N(d1.deposit), dep0 = b0 ? N(b0.deposit) : 0;
+  const ppe1 = N(d1.ppe), ppe0 = b0 ? N(b0.ppe) : 0;
+  const intang1 = N(d1.intangible), intang0 = b0 ? N(b0.intangible) : 0;
+  const ap1 = N(d1.ap), ap0 = b0 ? N(b0.ap) : 0;
+  const sl1 = N(d1.shortLoan), sl0 = b0 ? N(b0.shortLoan) : 0;
+  const ll1 = N(d1.longLoan), ll0 = b0 ? N(b0.longLoan) : 0;
+  const tp1 = N(d1.taxPay), tp0 = b0 ? N(b0.taxPay) : 0;
+  const ocl1 = N(d1.ocl), ocl0 = b0 ? N(b0.ocl) : 0;
+  const llnc1 = N(d1.longLoanNC), llnc0 = b0 ? N(b0.longLoanNC) : 0;
+  const dir1 = N(d1.directorLoan), dir0 = b0 ? N(b0.directorLoan) : 0;
+  const cap1 = N(d1.capital), cap0 = b0 ? N(b0.capital) : 0;
+
+  const currA1 = bs1.currentAssets, currA0 = bs0 ? bs0.currentAssets : 0;
+  const ncA1 = bs1.nonCurrentAssets, ncA0 = bs0 ? bs0.nonCurrentAssets : 0;
+  const totA1 = bs1.totalAssets, totA0 = bs0 ? bs0.totalAssets : 0;
+  const currL1 = bs1.currentLiab, currL0 = bs0 ? bs0.currentLiab : 0;
+  const ncL1 = bs1.nonCurrentLiab, ncL0 = bs0 ? bs0.nonCurrentLiab : 0;
+  const totL1 = bs1.totalLiab, totL0 = bs0 ? bs0.totalLiab : 0;
+  const reEnd1 = bs1.reEnd, reEnd0 = bs0 ? bs0.reEnd : 0;
+  const eq1t = bs1.totalEquity, eq0t = bs0 ? bs0.totalEquity : 0;
+  const totLE1 = bs1.totalLiabEq, totLE0 = bs0 ? bs0.totalLiabEq : 0;
+
+  // ---- P&L values ----
+  const rev1 = N(d1.rev), rev0 = b0 ? N(b0.rev) : 0;
+  const orev1 = N(d1.otherRev), orev0 = b0 ? N(b0.otherRev) : 0;
+  const totRev1 = pl1.totalRev, totRev0 = pl0 ? pl0.totalRev : 0;
+  const cogs1 = N(d1.cogs), cogs0 = b0 ? N(b0.cogs) : 0;
+  const gp1 = pl1.grossProfit, gp0 = pl0 ? pl0.grossProfit : 0;
+  const sell1 = N(d1.sellingExp), sell0 = b0 ? N(b0.sellingExp) : 0;
+  const adm1 = N(d1.admin), adm0 = b0 ? N(b0.admin) : 0;
+  const depEx1 = N(d1.depExp), depEx0 = b0 ? N(b0.depExp) : 0;
+  const int1 = N(d1.interestExp), int0 = b0 ? N(b0.interestExp) : 0;
+  const ebit1 = pl1.ebit, ebit0 = pl0 ? pl0.ebit : 0;
+  const pbt1 = pl1.pbt, pbt0 = pl0 ? pl0.pbt : 0;
+  const tax1 = pl1.tax, tax0 = pl0 ? pl0.tax : 0;
+  const ni1 = pl1.netIncome, ni0 = pl0 ? pl0.netIncome : 0;
+
+  // ---- Equity changes ----
+  const openCap1 = N(eq1.openCapital) || cap1;
+  const openRE1 = N(eq1.openRE) || N(d1.reBegin);
+  const niEq1 = N(eq1.netIncome) || ni1;
+  const div1v = N(eq1.dividends);
+  const closeCap1 = N(eq1.closeCapital) || cap1;
+  const closeRE1 = N(eq1.closeRE) || reEnd1;
+
+  const openCap0 = eq0 ? N(eq0.openCapital) : (b0 ? N(b0.capital) : 0);
+  const openRE0 = eq0 ? N(eq0.openRE) : (b0 ? N(b0.reBegin) : 0);
+  const niEq0 = eq0 ? N(eq0.netIncome) : ni0;
+  const div0v = eq0 ? N(eq0.dividends) : 0;
+  const closeCap0 = eq0 ? N(eq0.closeCapital) : cap0;
+  const closeRE0 = eq0 ? N(eq0.closeRE) : reEnd0;
+
+  // ---- Tax note ----
+  const taxProfit1 = N(pd1.taxAccountingProfit) || pbt1;
+  const taxAddBack1 = N(pd1.taxAddBack);
+  const taxDeduct1 = N(pd1.taxDeduct);
+  const taxLoss1 = N(pd1.taxLossCarryforward);
+  const taxable1 = N(pd1.taxableIncome) || (taxProfit1 + taxAddBack1 - taxDeduct1 - taxLoss1);
+  const taxRateN = N(pd1.taxRate) || 20;
+  const currentTax1 = N(pd1.currentTax) || tax1;
+  const deferredTax1 = N(pd1.deferredTax);
+
+  // ---- Admin note ----
+  const adminTotal1 = adminLines1.length > 0
+    ? adminLines1.reduce((s, l) => s + N(l.amount), 0)
+    : adm1;
+
+  // CSS is injected into the document head by _doExportFullFinancialStatementPDF
+
+  // ---- header block builder ----
+  function stmtHeader(title, period, showDraft = true) {
+    return `<div class="no-break" style="text-align:center;margin-bottom:8px">
+      <div class="fs-co-name">${escH(cn)}</div>
+      ${taxId ? `<div class="fs-co-sub">เลขทะเบียนนิติบุคคลเลขที่ ${escH(taxId)}</div>` : ''}
+      ${addr ? `<div class="fs-co-sub">${escH(addr)}</div>` : ''}
+      <div class="fs-stmt-title">${title}</div>
+      <div class="fs-stmt-period">${period}</div>
+      ${showDraft ? `<div><span class="fs-draft">${escH(draftWatermark)}</span></div>` : ''}
+    </div>
+    <hr class="fs-hline">
+    <div class="fs-unit">หน่วย: บาท</div>`;
+  }
+
+  // ============================================================
+  // BALANCE SHEET
+  // ============================================================
+  const bsHTML = `
+  ${stmtHeader('งบฐานะการเงิน', `ณ วันที่ 31 ธันวาคม ${currentYear} และ ${prevYear || '-'}`)}
+  <table>${colgroup}${thead}<tbody>
+    ${trow_section('สินทรัพย์')}
+    ${trow_section('สินทรัพย์หมุนเวียน')}
+    ${trow('เงินสดและรายการเทียบเท่าเงินสด', '4', cash1, cash0)}
+    ${ar1||ar0 ? trow('ลูกหนี้การค้า — สุทธิ', '', ar1, ar0) : ''}
+    ${loanAr1||loanAr0 ? trow('ลูกหนี้เงินกู้', '', loanAr1, loanAr0) : ''}
+    ${inv1||inv0 ? trow('สินค้าคงเหลือ', '', inv1, inv0) : ''}
+    ${oca1||oca0 ? trow('สินทรัพย์หมุนเวียนอื่น', '', oca1, oca0) : ''}
+    ${dep1||dep0 ? trow('เงินมัดจำและเงินประกัน', '', dep1, dep0) : ''}
+    ${trow_sub('รวมสินทรัพย์หมุนเวียน', currA1, currA0)}
+
+    ${trow_section('สินทรัพย์ไม่หมุนเวียน')}
+    ${ppe1||ppe0 ? trow('ที่ดิน อาคารและอุปกรณ์ — สุทธิ', '5', ppe1, ppe0) : ''}
+    ${intang1||intang0 ? trow('สินทรัพย์ไม่มีตัวตน — สุทธิ', '', intang1, intang0) : ''}
+    ${trow_sub('รวมสินทรัพย์ไม่หมุนเวียน', ncA1, ncA0)}
+    ${trow_total('รวมสินทรัพย์', totA1, totA0)}
+
+    ${trow_section('หนี้สิน')}
+    ${trow_section('หนี้สินหมุนเวียน')}
+    ${ap1||ap0 ? trow('เจ้าหนี้การค้า', '', ap1, ap0) : ''}
+    ${sl1||sl0 ? trow('เงินกู้ยืมระยะสั้น', '', sl1, sl0) : ''}
+    ${ll1||ll0 ? trow('เงินกู้ยืมระยะยาว ส่วนถึงกำหนดชำระภายใน 1 ปี', '', ll1, ll0) : ''}
+    ${tp1||tp0 ? trow('ภาษีเงินได้ค้างจ่าย', '', tp1, tp0) : ''}
+    ${ocl1||ocl0 ? trow('หนี้สินหมุนเวียนอื่น', '6', ocl1, ocl0) : ''}
+    ${trow_sub('รวมหนี้สินหมุนเวียน', currL1, currL0)}
+
+    ${trow_section('หนี้สินไม่หมุนเวียน')}
+    ${llnc1||llnc0 ? trow('เงินกู้ยืมระยะยาว — ส่วนที่ไม่หมุนเวียน', '', llnc1, llnc0) : ''}
+    ${dir1||dir0 ? trow('เงินกู้ยืมจากกรรมการ/ผู้ถือหุ้น', '', dir1, dir0) : ''}
+    ${trow_sub('รวมหนี้สินไม่หมุนเวียน', ncL1, ncL0)}
+    ${trow_sub('รวมหนี้สิน', totL1, totL0)}
+
+    ${trow_section('ส่วนของผู้ถือหุ้น')}
+    ${trow('ทุนจดทะเบียนและทุนชำระแล้ว', '', cap1, cap0)}
+    ${trow('กำไรสะสม', '', reEnd1, reEnd0)}
+    ${trow_sub('รวมส่วนของผู้ถือหุ้น', eq1t, eq0t)}
+    ${trow_total('รวมหนี้สินและส่วนของผู้ถือหุ้น', totLE1, totLE0)}
+  </tbody></table>
+  <div class="fs-footer-note">หมายเหตุประกอบงบการเงินเป็นส่วนหนึ่งของงบการเงินนี้</div>`;
+
+  // ============================================================
+  // P&L
+  // ============================================================
+  const plHTML = `
+  <div class="page-break"></div>
+  ${stmtHeader('งบกำไรขาดทุนเบ็ดเสร็จ',
+    `สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${currentYear} และ ${prevYear || '-'}`)}
+  <table>${colgroup}${thead}<tbody>
+    ${trow_section('รายได้')}
+    ${trow('รายได้จากการขาย/บริการ/รับเหมาก่อสร้าง', '', rev1, rev0)}
+    ${orev1||orev0 ? trow('รายได้อื่น', '', orev1, orev0) : ''}
+    ${trow_sub('รวมรายได้', totRev1, totRev0)}
+
+    ${trow_section('ค่าใช้จ่าย')}
+    ${trow('ต้นทุนขาย/ต้นทุนการให้บริการ/ต้นทุนก่อสร้าง', '', cogs1, cogs0)}
+    ${trow_sub('กำไรขั้นต้น', gp1, gp0)}
+
+    ${sell1||sell0 ? trow('ค่าใช้จ่ายในการขาย', '', sell1, sell0) : ''}
+    ${trow('ค่าใช้จ่ายในการบริหาร', '7', adm1, adm0)}
+    ${depEx1||depEx0 ? trow('ค่าเสื่อมราคาและค่าตัดจำหน่าย', '', depEx1, depEx0) : ''}
+    ${trow_sub('กำไรจากการดำเนินงาน (EBIT)', ebit1, ebit0)}
+
+    ${int1||int0 ? trow('ดอกเบี้ยจ่าย', '', -int1, -int0) : ''}
+    ${trow_sub('กำไรก่อนภาษีเงินได้', pbt1, pbt0)}
+
+    ${trow('ภาษีเงินได้นิติบุคคล', '8', tax1, tax0)}
+    ${trow_total('กำไรสุทธิสำหรับปี', ni1, ni0)}
+  </tbody></table>
+  <div class="fs-footer-note">หมายเหตุประกอบงบการเงินเป็นส่วนหนึ่งของงบการเงินนี้</div>`;
+
+  // ============================================================
+  // EQUITY CHANGES
+  // ============================================================
+  function eqrow(label, c1, r1, t1, c0, r0, t0, cls) {
+    const trCls = cls ? ` class="${cls}"` : '';
+    return `<tr${trCls}>
+      <td class="fs-left">${label}</td>
+      <td class="fs-right">${fv(c1)}</td>
+      <td class="fs-right">${fv(r1)}</td>
+      <td class="fs-right" style="border-left:0.5px solid #ccc">${fvt(t1)}</td>
+      ${H ? `<td class="fs-right">${fv(c0)}</td><td class="fs-right">${fv(r0)}</td>
+        <td class="fs-right" style="border-left:0.5px solid #ccc">${fvt(t0)}</td>` : ''}
+    </tr>`;
+  }
+  const eqColgroup = H
+    ? `<colgroup><col style="width:34%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"></colgroup>`
+    : `<colgroup><col style="width:52%"><col style="width:16%"><col style="width:16%"><col style="width:16%"></colgroup>`;
+  const eqThead = H
+    ? `<thead><tr class="fs-thead"><th class="fs-left" rowspan="2">รายการ</th>
+        <th colspan="3" style="text-align:center;border-bottom:0.5px solid #aaa">ปี ${currentYear}</th>
+        <th colspan="3" style="text-align:center;border-bottom:0.5px solid #aaa">ปี ${prevYear}</th></tr>
+       <tr style="border-bottom:1.5px solid #000">
+        <th>ทุนชำระแล้ว</th><th>กำไรสะสม</th><th>รวม</th>
+        <th>ทุนชำระแล้ว</th><th>กำไรสะสม</th><th>รวม</th>
+       </tr></thead>`
+    : `<thead><tr class="fs-thead"><th class="fs-left">รายการ</th>
+        <th>ทุนชำระแล้ว</th><th>กำไรสะสม</th><th>รวม</th></tr></thead>`;
+
+  const eqHTML = `
+  <div class="page-break"></div>
+  ${stmtHeader('งบแสดงการเปลี่ยนแปลงส่วนของผู้ถือหุ้น',
+    `สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${currentYear} และ ${prevYear || '-'}`, false)}
+  <table>${eqColgroup}${eqThead}<tbody>
+    ${eqrow('ยอดคงเหลือต้นปี',
+      openCap1, openRE1, openCap1+openRE1,
+      openCap0, openRE0, openCap0+openRE0, 'fs-r-sub')}
+    ${eqrow('กำไรสุทธิสำหรับปี',
+      0, niEq1, niEq1,
+      0, niEq0, niEq0, 'fs-r-item')}
+    ${div1v||div0v ? eqrow('จ่ายเงินปันผล',
+      0, -div1v, -div1v,
+      0, -div0v, -div0v, 'fs-r-item') : ''}
+    ${eqrow('ยอดคงเหลือปลายปี',
+      closeCap1, closeRE1, eq1t,
+      closeCap0, closeRE0, eq0t, 'fs-r-total')}
+  </tbody></table>
+  <div class="fs-footer-note">หมายเหตุประกอบงบการเงินเป็นส่วนหนึ่งของงบการเงินนี้</div>`;
+
+  // ============================================================
+  // NOTES
+  // ============================================================
+  // helper: note table header (label, yr1, yr0)
+  function nThead(w1='65%', w2='17.5%') {
+    return `<colgroup><col style="width:${w1}"><col style="width:${w2}">${H?`<col style="width:${w2}">`:''}</colgroup>
+      <thead><tr><th class="fs-left">รายการ</th><th>${currentYear}</th>${H?`<th>${prevYear}</th>`:''}</tr></thead>`;
+  }
+  function nRow(label, v1, v0, indent=false) {
+    return `<tr><td class="fs-left"${indent?' style="padding-left:14px"':''}>${label}</td>
+      <td class="fs-right">${fv(v1)}</td>${H?`<td class="fs-right">${fv(v0)}</td>`:''}</tr>`;
+  }
+  function nSub(label, v1, v0) {
+    return `<tr class="fs-r-sub"><td class="fs-left">${label}</td>
+      <td class="fs-right">${fvt(v1)}</td>${H?`<td class="fs-right">${fvt(v0)}</td>`:''}</tr>`;
+  }
+
+  // --- Cash note (Note 4) ---
+  const hasCashDetail = N(bd1.cashOnHand) || N(bd1.cashAtBank);
+  const cashNoteHTML = `<table class="fs-itbl" style="width:62%">${nThead()}
+    <tbody>
+    ${hasCashDetail ? `
+      ${nRow('เงินสดในมือ', N(bd1.cashOnHand), N(bd0.cashOnHand), true)}
+      ${nRow('เงินฝากธนาคาร', N(bd1.cashAtBank), N(bd0.cashAtBank), true)}
+      ${N(bd1.cashFixed)||N(bd0.cashFixed)?nRow('เงินฝากประจำ',N(bd1.cashFixed),N(bd0.cashFixed),true):''}
+    ` : nRow('เงินสดและรายการเทียบเท่าเงินสด', cash1, cash0, true)}
+    ${nSub('รวม', cash1, cash0)}
+    </tbody></table>`;
+
+  // --- PPE note (Note 5) ---
+  const ppe0net = ppeDetail0.length > 0
+    ? ppeDetail0.reduce((s,r)=>s+N(r.cost)-N(r.accDep),0)
+    : ppe0;
+  const ppeTableHTML = ppeDetail1.length > 0
+    ? `<table class="fs-itbl">
+        <colgroup><col style="width:28%"><col style="width:12%"><col style="width:12%"><col style="width:12%"><col style="width:8%"><col style="width:12%">${H?'<col style="width:16%">':''}</colgroup>
+        <thead><tr>
+          <th class="fs-left">รายการ</th>
+          <th>ราคาทุน</th><th>ค่าเสื่อมสะสม</th><th>มูลค่าสุทธิ ${currentYear}</th>
+          <th>อัตรา%</th><th>ค่าเสื่อมปีนี้</th>
+          ${H?`<th>มูลค่าสุทธิ ${prevYear}</th>`:''}
+        </tr></thead><tbody>
+        ${ppeDetail1.map(r=>{
+          const nm = r.name || r.label || '';
+          const net = N(r.cost)-N(r.accDep);
+          const r0 = ppeDetail0.find(x=>(x.name||x.label)===nm);
+          const net0 = r0 ? N(r0.cost)-N(r0.accDep) : 0;
+          return `<tr><td class="fs-left">${escH(nm)}</td>
+            <td class="fs-right">${fv(N(r.cost))}</td>
+            <td class="fs-right">${fv(N(r.accDep))}</td>
+            <td class="fs-right">${fvt(net)}</td>
+            <td style="text-align:center">${N(r.depRate)||0}%</td>
+            <td class="fs-right">${fv(N(r.depYear))}</td>
+            ${H?`<td class="fs-right">${fv(net0)}</td>`:''}
+          </tr>`;}).join('')}
+        <tr class="fs-r-sub"><td class="fs-left">รวม</td>
+          <td class="fs-right">${fvt(ppeDetail1.reduce((s,r)=>s+N(r.cost),0))}</td>
+          <td class="fs-right">${fvt(ppeDetail1.reduce((s,r)=>s+N(r.accDep),0))}</td>
+          <td class="fs-right">${fvt(ppe1)}</td><td></td>
+          <td class="fs-right">${fvt(ppeDetail1.reduce((s,r)=>s+N(r.depYear),0))}</td>
+          ${H?`<td class="fs-right">${fvt(ppe0net)}</td>`:''}
+        </tr></tbody></table>`
+    : `<table class="fs-itbl" style="width:50%">${nThead('70%','15%')}
+        <tbody>${nRow('ที่ดิน อาคารและอุปกรณ์ — สุทธิ', ppe1, ppe0, true)}${nSub('รวม',ppe1,ppe0)}</tbody></table>
+        <p style="font-size:8pt;color:#777;margin-top:4px">(ไม่มีรายละเอียดแยกประเภท — กรอกได้ในแท็บ F)</p>`;
+
+  // --- OCL note (Note 6) ---
+  const oclNoteHTML = (ocl1||ocl0) ? `<table class="fs-itbl" style="width:62%">${nThead()}
+    <tbody>
+    ${N(bd1.accruedSalaries)||N(bd0.accruedSalaries)?nRow('เงินเดือนค้างจ่าย',N(bd1.accruedSalaries),N(bd0.accruedSalaries),true):''}
+    ${N(bd1.accruedExpenses)||N(bd0.accruedExpenses)?nRow('ค่าใช้จ่ายค้างจ่ายอื่น',N(bd1.accruedExpenses),N(bd0.accruedExpenses),true):''}
+    ${N(bd1.vatPayable)||N(bd0.vatPayable)?nRow('ภาษีมูลค่าเพิ่มค้างจ่าย',N(bd1.vatPayable),N(bd0.vatPayable),true):''}
+    ${N(bd1.whtPayable)||N(bd0.whtPayable)?nRow('ภาษีเงินได้หัก ณ ที่จ่ายค้างชำระ',N(bd1.whtPayable),N(bd0.whtPayable),true):''}
+    ${N(bd1.otherAccrued)||N(bd0.otherAccrued)?nRow('หนี้สินค้างจ่ายอื่น',N(bd1.otherAccrued),N(bd0.otherAccrued),true):''}
+    ${nSub('รวม', ocl1, ocl0)}
+    </tbody></table>` : '';
+
+  // --- Admin note (Note 7) ---
+  const adminTotal0 = adminLines0.length > 0
+    ? adminLines0.reduce((s,l)=>s+N(l.amount),0) : adm0;
+  const adminTableHTML = adminLines1.length > 0
+    ? `<table class="fs-itbl">${nThead('62%','19%')}
+        <tbody>
+        ${adminLines1.map(l=>{
+          const nm = l.name || l.label || '';
+          const l0 = adminLines0.find(x=>(x.name||x.label)===nm);
+          return nRow(escH(nm), N(l.amount), l0?N(l0.amount):0, true);
+        }).join('')}
+        ${nSub('รวมค่าใช้จ่ายในการบริหาร', adminTotal1, adminTotal0)}
+        </tbody></table>`
+    : `<table class="fs-itbl" style="width:50%">${nThead('70%','15%')}
+        <tbody>${nRow('ค่าใช้จ่ายในการบริหาร', adm1, adm0, true)}${nSub('รวม',adm1,adm0)}</tbody></table>
+        <p style="font-size:8pt;color:#777;margin-top:4px">(ไม่มีรายละเอียดย่อย — กรอกได้ในแท็บ F)</p>`;
+
+  // --- Tax note (Note 8) ---
+  const tax0rate = N(pd0.taxRate) || 20;
+  const taxProfit0 = N(pd0.taxAccountingProfit) || pbt0;
+  const taxable0 = N(pd0.taxableIncome) || pbt0;
+  const taxTableHTML = `<table class="fs-itbl" style="width:68%">${nThead('60%','20%')}
+    <tbody>
+    ${nRow('กำไรทางบัญชีก่อนภาษีเงินได้', taxProfit1, taxProfit0, true)}
+    ${taxAddBack1?nRow('บวก รายจ่ายต้องห้าม', taxAddBack1, N(pd0.taxAddBack), true):''}
+    ${taxDeduct1?nRow('หัก รายการที่หักออก', -taxDeduct1, -N(pd0.taxDeduct), true):''}
+    ${taxLoss1?nRow('หัก ขาดทุนสะสม', -taxLoss1, -N(pd0.taxLossCarryforward), true):''}
+    ${nSub('กำไรสุทธิทางภาษี (Taxable Income)', taxable1, taxable0)}
+    ${nRow(`ภาษีเงินได้นิติบุคคล (${taxRateN}%)`, currentTax1, N(pd0.currentTax)||tax0, true)}
+    ${deferredTax1||N(pd0.deferredTax)?nRow('ภาษีเงินได้รอตัดบัญชี', deferredTax1, N(pd0.deferredTax), true):''}
+    ${nSub('ภาษีเงินได้นิติบุคคลสุทธิ', tax1, tax0)}
+    </tbody></table>`;
+
+  const notesHTML = `
+  <div class="page-break"></div>
+  <div class="no-break">
+    <div class="fs-co-name" style="text-align:center">${escH(cn)}</div>
+    <div class="fs-stmt-title" style="text-align:center">หมายเหตุประกอบงบการเงิน</div>
+    <div class="fs-stmt-period" style="text-align:center">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${currentYear} และ ${prevYear||'-'}</div>
+    <hr class="fs-hline">
+  </div>
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 1  ข้อมูลทั่วไป</div>
+    <div class="fs-note-body">
+      <p>${escH(cn)}${taxId ? ` (เลขทะเบียนนิติบุคคลเลขที่ ${escH(taxId)})` : ''} จดทะเบียนเป็นบริษัทจำกัดในประเทศไทย</p>
+      ${bizType ? `<p>ประกอบธุรกิจหลัก: ${escH(bizType)}</p>` : ''}
+      ${addr ? `<p>ที่ตั้งสำนักงานใหญ่: ${escH(addr)}</p>` : ''}
+      ${nt1.note1 ? `<p>${nt1.note1.replace(/\n/g,'<br>')}</p>` : ''}
+    </div>
+  </div>
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 2  เกณฑ์ในการจัดทำงบการเงิน</div>
+    <div class="fs-note-body">
+      <p>งบการเงินนี้จัดทำขึ้นตามมาตรฐานการรายงานทางการเงินสำหรับกิจการที่ไม่มีส่วนได้เสียสาธารณะ (TFRS for NPAEs)
+      โดยใช้เกณฑ์คงค้างในการรับรู้รายการ และใช้หลักราคาทุนในการวัดมูลค่า ยกเว้นที่กำหนดไว้เป็นอย่างอื่นในหมายเหตุประกอบงบการเงิน</p>
+    </div>
+  </div>
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 3  สรุปนโยบายการบัญชีที่สำคัญ</div>
+    <div class="fs-note-body">
+      <p><b>การรับรู้รายได้: </b>${pol.revenueRecognition || 'รับรู้รายได้เมื่อได้ส่งมอบสินค้าหรือให้บริการแล้ว และได้รับการยอมรับจากผู้รับบริการ'}</p>
+      <p><b>สินค้าคงเหลือ: </b>วัดมูลค่าด้วยวิธี${pol.inventoryMethod || 'FIFO'} เทียบกับมูลค่าสุทธิที่จะได้รับ แล้วใช้ราคาที่ต่ำกว่า</p>
+      <p><b>ที่ดิน อาคารและอุปกรณ์: </b>บันทึกด้วยราคาทุนหักค่าเสื่อมราคาสะสม คิดค่าเสื่อมราคาด้วยวิธี${
+        pol.ppeDepMethod === 'DB' ? 'ยอดลดลงทวีคูณ' : 'เส้นตรง (Straight-line method)'}</p>
+      <p><b>ภาษีเงินได้: </b>${pol.taxPolicy || `บันทึกตามอัตราที่กฎหมายกำหนด อัตราร้อยละ ${taxRateN} ของกำไรสุทธิทางภาษี`}</p>
+    </div>
+  </div>
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 4  เงินสดและรายการเทียบเท่าเงินสด</div>
+    <div class="fs-note-body">${cashNoteHTML}</div>
+  </div>
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 5  ที่ดิน อาคารและอุปกรณ์ — สุทธิ</div>
+    <div class="fs-note-body">${ppeTableHTML}</div>
+  </div>
+
+  ${ocl1||ocl0 ? `
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 6  หนี้สินหมุนเวียนอื่น</div>
+    <div class="fs-note-body">${oclNoteHTML}</div>
+  </div>` : ''}
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 7  ค่าใช้จ่ายในการบริหาร</div>
+    <div class="fs-note-body">${adminTableHTML}</div>
+  </div>
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 8  ภาษีเงินได้นิติบุคคล</div>
+    <div class="fs-note-body">${taxTableHTML}</div>
+  </div>
+
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 9  ภาระผูกพันและหนี้สินที่อาจเกิดขึ้น</div>
+    <div class="fs-note-body">
+      <p>${nt1.note10 ? nt1.note10.replace(/\n/g,'<br>') :
+        'ณ วันที่งบการเงิน บริษัทไม่มีภาระผูกพันหรือหนี้สินที่อาจเกิดขึ้นที่มีสาระสำคัญนอกเหนือจากที่แสดงไว้ในงบการเงิน'}</p>
+    </div>
+  </div>
+
+  ${nt1.note11 ? `
+  <div class="fs-note-sec">
+    <div class="fs-note-title">หมายเหตุ 10  เหตุการณ์ภายหลังวันที่ในงบการเงิน</div>
+    <div class="fs-note-body"><p>${nt1.note11.replace(/\n/g,'<br>')}</p></div>
+  </div>` : ''}
+
+  <div class="fs-note-sec" style="margin-top:16px">
+    <div class="fs-note-title">การอนุมัติงบการเงิน</div>
+    <div class="fs-note-body">
+      <p>${N(pd1.approvalNote) || 'งบการเงินนี้ได้รับการอนุมัติจากคณะกรรมการบริษัทเพื่อนำเสนอต่อผู้ถือหุ้น'}</p>
+    </div>
+  </div>
+
+  <div class="fs-sig-row">
+    <div class="fs-sig-box">
+      <div class="fs-sig-line"></div>
+      <div class="fs-sig-name">${escH(director || '...................................................')}</div>
+      <div class="fs-sig-role">กรรมการผู้มีอำนาจ</div>
+      <div class="fs-sig-date">วันที่ ............................................</div>
+    </div>
+    <div class="fs-sig-box">
+      <div class="fs-sig-line"></div>
+      <div class="fs-sig-name">.....................................................</div>
+      <div class="fs-sig-role">กรรมการผู้มีอำนาจ</div>
+      <div class="fs-sig-date">วันที่ ............................................</div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:20px;font-size:7.5pt;color:#888">
+    สร้างโดย AI Financial Statement Builder — S.P.N. Corporate Services · ${BUILD_LABEL}
+  </div>`;
+
+  // ============================================================
+  // COVER PAGE
+  // ============================================================
+  const stmtTypeLabel = isDraft
+    ? 'งบการเงินประมาณการ'
+    : 'งบการเงิน';
+  const showDraftBadge = draftWatermark !== 'งบการเงิน';
+
+  const coverHTML = `
+  <div class="fs-cover no-break">
+    <div class="fs-cover-name">${escH(cn)}</div>
+    ${taxId ? `<div class="fs-cover-taxid">เลขทะเบียนนิติบุคคลเลขที่ ${escH(taxId)}</div>` : ''}
+    ${addr ? `<div class="fs-cover-addr">${escH(addr)}</div>` : ''}
+    <hr class="fs-cover-line">
+    <div class="fs-cover-title">${stmtTypeLabel}</div>
+    <div class="fs-cover-period">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${currentYear} และ ${prevYear || '-'}</div>
+    ${bizType ? `<div class="fs-cover-biz">ประกอบธุรกิจ: ${escH(bizType)}</div>` : ''}
+    ${showDraftBadge ? `<div class="fs-cover-draft">${escH(draftWatermark)}</div>` : ''}
+    <div class="fs-cover-preparer">
+      จัดทำโดย S.P.N. Corporate Services · ${BUILD_LABEL}<br>
+      วันที่พิมพ์ ${new Date().toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'})}
+    </div>
+  </div>`;
+
+  // ============================================================
+  // ASSEMBLE — returns inner HTML only (CSS injected separately into head)
+  // ============================================================
+  return `${coverHTML}
+    <div class="page-break"></div>
+    ${bsHTML}
+    <div class="page-break"></div>
+    ${plHTML}
+    <div class="page-break"></div>
+    ${eqHTML}
+    <div class="page-break"></div>
+    ${notesHTML}`;
 }
 
 // ===== INIT =====
