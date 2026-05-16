@@ -968,6 +968,76 @@ function renderEditor(){
 }
 
 // ===== BASE YEAR TAB =====
+function renderPrevYearSection(yd){
+  const prevExists=getPrevYear(S.currentCo,S.currentYear)!==null;
+  const p=Object.assign(defaultBase(),yd.prevYearData||{});
+  const prevYrNum=parseInt(S.currentYear)-1;
+
+  function fmtP(raw){
+    if(raw===0||raw===undefined||raw===null)return'';
+    if(raw<0)return'('+Math.abs(raw).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+')';
+    return raw.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function pf(field,label){
+    const display=fmtP(p[field]);
+    return'<div class="bfield">'
+      +'<label style="color:#92400E">'+prevYrNum+' — '+label+'</label>'
+      +'<input type="text" inputmode="decimal" id="py-'+field+'" value="'+display+'"'
+      +' placeholder="0.00" style="text-align:right;background:#FFFBEB;border-color:#FCD34D"'
+      +' onchange="onPrevChange(\''+field+'\',this.value)">'
+      +'</div>';
+  }
+
+  const titleHtml='<div class="stit" style="margin-top:24px;color:#92400E;border-color:#FCD34D">📋 ข้อมูลปีก่อนหน้า (สำหรับเปรียบเทียบในงบ)</div>';
+
+  if(prevExists){
+    return titleHtml
+      +'<div style="padding:8px 12px;background:var(--green-lt);border-radius:8px;color:#166534;font-size:12px;margin-bottom:10px">✅ พบข้อมูลปีก่อนในระบบแล้ว — งบจะแสดง 2 ปีอัตโนมัติ (ไม่ต้องกรอกซ้ำ)</div>';
+  }
+
+  return titleHtml
+    +'<div style="padding:8px 12px;background:#FEF3C7;border-radius:8px;color:#92400E;font-size:12px;margin-bottom:10px">⚠ ไม่พบข้อมูลปีก่อน — กรุณากรอกตัวเลขปีก่อนด้านล่าง เพื่อให้งบ PDF แสดง 2 คอลัมน์เปรียบเทียบ</div>'
+
+    +'<div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:6px;text-transform:uppercase">งบกำไรขาดทุน ปี '+prevYrNum+'</div>'
+    +'<div class="bg2" style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:8px">'
+    +pf('rev','รายได้จากการบริการ')
+    +pf('otherRev','รายได้อื่น')
+    +pf('cogs','ต้นทุนบริการ')
+    +pf('sellingExp','ค่าใช้จ่ายในการขาย')
+    +pf('admin','ค่าใช้จ่ายในการบริหาร')
+    +pf('tax','ภาษีเงินได้นิติบุคคล')
+    +pf('netIncome','กำไรสุทธิ')
+    +'</div>'
+
+    +'<div style="font-size:11px;font-weight:700;color:#92400E;margin:10px 0 6px;text-transform:uppercase">งบฐานะการเงิน ปี '+prevYrNum+' — สินทรัพย์</div>'
+    +'<div class="bg2" style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:8px">'
+    +pf('cash','เงินสด')
+    +pf('ar','ลูกหนี้การค้าและลูกหนี้อื่น')
+    +pf('loanAr','ลูกหนี้เงินกู้')
+    +pf('inventory','สินค้าคงเหลือ')
+    +pf('oca','สินทรัพย์หมุนเวียนอื่น')
+    +pf('deposit','เงินมัดจำ/เงินประกัน')
+    +pf('ppe','ที่ดิน อาคารและอุปกรณ์ — สุทธิ')
+    +pf('intangible','สินทรัพย์ไม่มีตัวตน')
+    +'</div>'
+
+    +'<div style="font-size:11px;font-weight:700;color:#92400E;margin:10px 0 6px;text-transform:uppercase">งบฐานะการเงิน ปี '+prevYrNum+' — หนี้สินและทุน</div>'
+    +'<div class="bg2" style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:8px">'
+    +pf('ap','เจ้าหนี้การค้าและเจ้าหนี้อื่น')
+    +pf('shortLoan','เงินกู้ระยะสั้น')
+    +pf('longLoan','เงินกู้ระยะยาว — ส่วนถึงกำหนด 1 ปี')
+    +pf('taxPay','ภาษีค้างจ่าย')
+    +pf('ocl','หนี้สินหมุนเวียนอื่น')
+    +pf('longLoanNC','เงินกู้ระยะยาว — ส่วนไม่หมุนเวียน')
+    +pf('directorLoan','เงินกู้กรรมการ/ผู้ถือหุ้น')
+    +pf('capital','ทุนชำระแล้ว')
+    +pf('reBegin','กำไรสะสมต้นปีก่อน')
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin:8px 0 16px">'
+    +'<button class="btn btn-sm btn-amber" onclick="savePrevYear()">💾 บันทึกข้อมูลปีก่อน</button>'
+    +'</div>';
+}
+
 function renderBaseTab(yd){
   const b=Object.assign(defaultBase(),yd.base||{});
   function bf(field,label){
@@ -1058,6 +1128,9 @@ function renderBaseTab(yd){
       หนี้สินรวม <b>${fmtNum(r.bs.totalLiab)}</b> + ส่วนของผู้ถือหุ้น <b>${fmtNum(r.bs.totalEquity)}</b> = <b>${fmtNum(r.bs.totalLiabEq)}</b>
     </div>`:''}
   </div>
+  <!-- ===== ข้อมูลปีก่อนหน้า ===== -->
+  ${renderPrevYearSection(yd)}
+
   <div style="display:flex;gap:8px;justify-content:flex-end">
     <button class="btn btn-primary" onclick="saveBase()">💾 บันทึกปีฐาน</button>
     <button class="btn btn-secondary" onclick="switchTab('draft')">→ ไปร่างปรับใหม่</button>
@@ -2139,6 +2212,30 @@ function saveBase(){
   toast('บันทึกข้อมูลปีฐานแล้ว','ok');
 }
 
+function onPrevChange(field,val){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.prevYearData)yd.prevYearData=defaultBase();
+  yd.prevYearData[field]=parseAccountingNumber(val);
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+}
+function savePrevYear(){
+  const yd=getYearData(S.currentCo,S.currentYear);
+  if(!yd)return;
+  if(!yd.prevYearData)yd.prevYearData=defaultBase();
+  const fields=['rev','otherRev','cogs','sellingExp','admin','depExp','interestExp','tax','netIncome',
+    'cash','ar','loanAr','inventory','oca','deposit','ppe','intangible',
+    'ap','shortLoan','longLoan','taxPay','ocl','longLoanNC','directorLoan','capital','reBegin'];
+  fields.forEach(f=>{
+    const el=document.getElementById(`py-${f}`);
+    if(el)yd.prevYearData[f]=parseAccountingNumber(el.value);
+  });
+  yd.updatedAt=Date.now();
+  saveYearLocal(S.currentCo,S.currentYear,yd);
+  fbSaveYear(S.currentCo,S.currentYear,yd);
+  toast('บันทึกข้อมูลปีก่อนหน้าแล้ว','ok');
+}
 function onDraftChange(field,val){
   const yd=getYearData(S.currentCo,S.currentYear);
   if(!yd)return;
@@ -4289,17 +4386,34 @@ function _doExportPDF(co,yd){
   const pl=res.pl; const bs=res.bs;
   const d=res.d;
 
+  // ---- Determine previous year data ----
+  // Priority 1: a separate year entry in the system
+  // Priority 2: prevYearData stored directly on this year (entered manually in Base Tab)
   const prevYr=getPrevYear(S.currentCo,S.currentYear);
-  let prevPL=null,prevBS=null,prevBase=null,prevFD=null;
-  if(prevYr){
-    const pyd=getYearData(S.currentCo,prevYr);
+  let prevPL=null,prevBS=null,prevBase=null,prevFD=null,resolvedPrevYr=null;
+  if(effectivePrevYr){
+    const pyd=getYearData(S.currentCo,effectivePrevYr);
     if(pyd){
       const pb=Object.assign(defaultBase(),pyd.base||pyd.draft||{});
       const pr=computeBase(pb);
       prevPL=pr.pl;prevBS=pr.bs;prevBase=pb;
       prevFD=Object.assign(defaultFullData(),pyd.fullData||{});
+      resolvedPrevYr=effectivePrevYr;
     }
   }
+  // Fallback: use manually-entered prevYearData
+  if(!prevBase && yd.prevYearData){
+    const pb=Object.assign(defaultBase(),yd.prevYearData);
+    // Check if any value is non-zero (user actually entered data)
+    const hasData=Object.values(pb).some(v=>Number(v)!==0);
+    if(hasData){
+      const pr=computeBase(pb);
+      prevPL=pr.pl;prevBS=pr.bs;prevBase=pb;
+      prevFD=null;
+      resolvedPrevYr=String(parseInt(S.currentYear)-1);
+    }
+  }
+  const effectivePrevYr=resolvedPrevYr;
 
   const cfInput=Object.assign(defaultCF(),yd.cf||{});
   const cfRes=computeCF(base,draft,settings,cfInput,res);
@@ -4318,8 +4432,8 @@ function _doExportPDF(co,yd){
     const s=a.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
     return v<0?`(${s})`:s;
   };
-  const pyr=prevYr||'';
-  const cols=prevYr?4:3;
+  const pyr=effectivePrevYr||'';
+  const cols=effectivePrevYr?4:3;
 
   // Signature block HTML
   const signBlock=`<div class="sign-area"><div class="sign-box"><div class="sign-line"></div><p>…………………………………………..กรรมการ</p><p>(${director})</p></div></div>`;
@@ -4360,7 +4474,7 @@ function _doExportPDF(co,yd){
   const hasAdminRows=adminFields.some(([f])=>N(pd[f])!==0||N(prevPD[f])!==0);
   const adminRows=adminFields
     .filter(([f])=>N(pd[f])!==0||N(prevPD[f])!==0)
-    .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(pd[f]))}</td>${prevYr?`<td class="num">${fv(N(prevPD[f]))}</td>`:''}</tr>`)
+    .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(pd[f]))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevPD[f]))}</td>`:''}</tr>`)
     .join('');
 
   // OCL detail fields
@@ -4376,7 +4490,7 @@ function _doExportPDF(co,yd){
   const hasOclRows=oclFields.some(([f])=>N(bd[f])!==0||N(prevBD[f])!==0);
   const oclRows=oclFields
     .filter(([f])=>N(bd[f])!==0||N(prevBD[f])!==0)
-    .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(bd[f]))}</td>${prevYr?`<td class="num">${fv(N(prevBD[f]))}</td>`:''}</tr>`)
+    .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(bd[f]))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBD[f]))}</td>`:''}</tr>`)
     .join('');
 
   // Cash detail
@@ -4384,7 +4498,7 @@ function _doExportPDF(co,yd){
   const cashRows=[
     ['cashOnHand','เงินสด'],['cashAtBank','เงินฝากธนาคาร'],['cashFixed','เงินฝากประจำ']
   ].filter(([f])=>N(bd[f])||N(prevBD[f]))
-   .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(bd[f]))}</td>${prevYr?`<td class="num">${fv(N(prevBD[f]))}</td>`:''}</tr>`)
+   .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(bd[f]))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBD[f]))}</td>`:''}</tr>`)
    .join('');
 
   // PPE detail rows (note 5 — keeps same format as original)
@@ -4393,15 +4507,15 @@ function _doExportPDF(co,yd){
   // Equity changes — 2 years continuous like the PDF template
   // prevYear values
   const prevCapital=N(prevBase?.capital)||N(d.capital);
-  const prevYearOpenRE=prevYr?(N(eq.openRE)||N(base.reBegin)||(N(prevBase?.reBegin))):0;
+  const prevYearOpenRE=effectivePrevYr?(N(eq.openRE)||N(base.reBegin)||(N(prevBase?.reBegin))):0;
   // year before prev (opening of prev year)
-  const prevPrevRE=prevYr?(N(prevBase?.reBegin)||0):0;
+  const prevPrevRE=effectivePrevYr?(N(prevBase?.reBegin)||0):0;
   const prevNetIncome=prevPL?.netIncome||0;
-  const prevCloseRE=prevYr?(prevPrevRE+prevNetIncome):0;
-  const prevCloseTotal=prevYr?(prevCapital+prevCloseRE):0;
+  const prevCloseRE=effectivePrevYr?(prevPrevRE+prevNetIncome):0;
+  const prevCloseTotal=effectivePrevYr?(prevCapital+prevCloseRE):0;
 
   const curOpenCapital=N(d.capital);
-  const curOpenRE=prevYr?prevCloseRE:(N(eq.openRE)||N(base.reBegin)||0);
+  const curOpenRE=effectivePrevYr?prevCloseRE:(N(eq.openRE)||N(base.reBegin)||0);
   const curOpenTotal=curOpenCapital+curOpenRE;
 
   // Approval meeting text
@@ -4495,7 +4609,7 @@ function _doExportPDF(co,yd){
     <div class="hdr-block">
       <div class="co-name">${cn}</div>
       <div class="stmt-title">งบกำไรขาดทุน</div>
-      <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}${prevYr?' และ '+prevYr:''}</div>
+      <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}${effectivePrevYr?' และ '+effectivePrevYr:''}</div>
     </div>
     <div class="unit">หน่วย : บาท</div>
 
@@ -4505,24 +4619,24 @@ function _doExportPDF(co,yd){
           <th></th>
           <th class="note-col">หมายเหตุ</th>
           <th class="num yr-col">${yr}</th>
-          ${prevYr?`<th class="num yr-col">${prevYr}</th>`:''}
+          ${effectivePrevYr?`<th class="num yr-col">${effectivePrevYr}</th>`:''}
         </tr>
       </thead>
       <tbody>
         <tr class="sec-hdr"><td colspan="${cols}">รายได้</td></tr>
-        <tr><td class="ind-cell">รายได้จากการบริการ</td><td class="note-col"></td><td class="num">${fv(N(d.rev))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.rev))}</td>`:''}</tr>
-        ${(N(d.otherRev)||N(prevBase?.otherRev))?`<tr><td class="ind-cell">รายได้อื่น</td><td class="note-col"></td><td class="num">${fv(N(d.otherRev))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.otherRev))}</td>`:''}</tr>`:''}
-        <tr class="subtotal"><td>รวมรายได้</td><td class="note-col"></td><td class="num">${fv(pl.totalRev)}</td>${prevYr?`<td class="num">${fv(prevPL?.totalRev)}</td>`:''}</tr>
+        <tr><td class="ind-cell">รายได้จากการบริการ</td><td class="note-col"></td><td class="num">${fv(N(d.rev))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.rev))}</td>`:''}</tr>
+        ${(N(d.otherRev)||N(prevBase?.otherRev))?`<tr><td class="ind-cell">รายได้อื่น</td><td class="note-col"></td><td class="num">${fv(N(d.otherRev))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.otherRev))}</td>`:''}</tr>`:''}
+        <tr class="subtotal"><td>รวมรายได้</td><td class="note-col"></td><td class="num">${fv(pl.totalRev)}</td>${effectivePrevYr?`<td class="num">${fv(prevPL?.totalRev)}</td>`:''}</tr>
 
         <tr class="sec-hdr"><td colspan="${cols}">ค่าใช้จ่าย</td></tr>
-        <tr><td class="ind-cell">ต้นทุนบริการ</td><td class="note-col"></td><td class="num">${fv(N(d.cogs))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.cogs))}</td>`:''}</tr>
-        ${(N(d.sellingExp)||N(prevBase?.sellingExp))?`<tr><td class="ind-cell">ค่าใช้จ่ายในการขาย</td><td class="note-col"></td><td class="num">${fv(N(d.sellingExp))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.sellingExp))}</td>`:''}</tr>`:''}
-        <tr><td class="ind-cell">ค่าใช้จ่ายในการบริหาร</td><td class="note-col" style="text-align:center">8</td><td class="num">${fv(N(d.admin))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.admin))}</td>`:''}</tr>
-        <tr class="subtotal"><td>รวมค่าใช้จ่าย</td><td class="note-col"></td><td class="num">${fv(N(d.cogs)+N(d.sellingExp)+N(d.admin))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.cogs)+N(prevBase?.sellingExp)+N(prevBase?.admin))}</td>`:''}</tr>
+        <tr><td class="ind-cell">ต้นทุนบริการ</td><td class="note-col"></td><td class="num">${fv(N(d.cogs))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.cogs))}</td>`:''}</tr>
+        ${(N(d.sellingExp)||N(prevBase?.sellingExp))?`<tr><td class="ind-cell">ค่าใช้จ่ายในการขาย</td><td class="note-col"></td><td class="num">${fv(N(d.sellingExp))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.sellingExp))}</td>`:''}</tr>`:''}
+        <tr><td class="ind-cell">ค่าใช้จ่ายในการบริหาร</td><td class="note-col" style="text-align:center">8</td><td class="num">${fv(N(d.admin))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.admin))}</td>`:''}</tr>
+        <tr class="subtotal"><td>รวมค่าใช้จ่าย</td><td class="note-col"></td><td class="num">${fv(N(d.cogs)+N(d.sellingExp)+N(d.admin))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.cogs)+N(prevBase?.sellingExp)+N(prevBase?.admin))}</td>`:''}</tr>
 
-        <tr><td>กำไรก่อนหักค่าภาษีเงินได้นิติบุคคล</td><td class="note-col"></td><td class="num">${fv(pl.pbt)}</td>${prevYr?`<td class="num">${fv(prevPL?.pbt)}</td>`:''}</tr>
-        <tr><td class="ind-cell">หัก ค่าภาษีเงินได้นิติบุคคล</td><td class="note-col" style="text-align:center">9</td><td class="num">${fv(pl.tax)}</td>${prevYr?`<td class="num">${fv(prevPL?.tax)}</td>`:''}</tr>
-        <tr class="grand-total"><td>กำไรสุทธิ</td><td class="note-col"></td><td class="num">${fv(pl.netIncome)}</td>${prevYr?`<td class="num">${fv(prevPL?.netIncome)}</td>`:''}</tr>
+        <tr><td>กำไรก่อนหักค่าภาษีเงินได้นิติบุคคล</td><td class="note-col"></td><td class="num">${fv(pl.pbt)}</td>${effectivePrevYr?`<td class="num">${fv(prevPL?.pbt)}</td>`:''}</tr>
+        <tr><td class="ind-cell">หัก ค่าภาษีเงินได้นิติบุคคล</td><td class="note-col" style="text-align:center">9</td><td class="num">${fv(pl.tax)}</td>${effectivePrevYr?`<td class="num">${fv(prevPL?.tax)}</td>`:''}</tr>
+        <tr class="grand-total"><td>กำไรสุทธิ</td><td class="note-col"></td><td class="num">${fv(pl.netIncome)}</td>${effectivePrevYr?`<td class="num">${fv(prevPL?.netIncome)}</td>`:''}</tr>
       </tbody>
     </table>
 
@@ -4537,7 +4651,7 @@ function _doExportPDF(co,yd){
     <div class="hdr-block">
       <div class="co-name">${cn}</div>
       <div class="stmt-title">งบฐานะการเงิน</div>
-      <div class="stmt-sub">ณ วันที่ 31 ธันวาคม ${yr}${prevYr?' และ '+prevYr:''}</div>
+      <div class="stmt-sub">ณ วันที่ 31 ธันวาคม ${yr}${effectivePrevYr?' และ '+effectivePrevYr:''}</div>
     </div>
     <div class="unit">หน่วย : บาท</div>
 
@@ -4547,52 +4661,52 @@ function _doExportPDF(co,yd){
           <th></th>
           <th class="note-col">หมายเหตุ</th>
           <th class="num yr-col">${yr}</th>
-          ${prevYr?`<th class="num yr-col">${prevYr}</th>`:''}
+          ${effectivePrevYr?`<th class="num yr-col">${effectivePrevYr}</th>`:''}
         </tr>
       </thead>
       <tbody>
         <!-- ASSETS -->
         <tr class="sec-hdr"><td colspan="${cols}">สินทรัพย์</td></tr>
         <tr class="sec-hdr"><td colspan="${cols}">สินทรัพย์หมุนเวียน</td></tr>
-        <tr><td class="ind-cell">เงินสดและรายการเทียบเท่าเงินสด</td><td class="note-col" style="text-align:center">4</td><td class="num">${fv(bs.cash)}</td>${prevYr?`<td class="num">${fv(prevBS?.cash)}</td>`:''}</tr>
-        ${(N(d.ar)||N(prevBase?.ar))?`<tr><td class="ind-cell">ลูกหนี้การค้าและลูกหนี้อื่น</td><td class="note-col"></td><td class="num">${fv(N(d.ar))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.ar))}</td>`:''}</tr>`:''}
-        ${(N(d.loanAr)||N(prevBase?.loanAr))?`<tr><td class="ind-cell">ลูกหนี้เงินกู้</td><td class="note-col"></td><td class="num">${fv(N(d.loanAr))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.loanAr))}</td>`:''}</tr>`:''}
-        ${(N(d.inventory)||N(prevBase?.inventory))?`<tr><td class="ind-cell">สินค้าคงเหลือ</td><td class="note-col"></td><td class="num">${fv(N(d.inventory))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.inventory))}</td>`:''}</tr>`:''}
-        ${(N(d.oca)||N(prevBase?.oca))?`<tr><td class="ind-cell">สินทรัพย์หมุนเวียนอื่น</td><td class="note-col"></td><td class="num">${fv(N(d.oca))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.oca))}</td>`:''}</tr>`:''}
-        ${(N(d.deposit)||N(prevBase?.deposit))?`<tr><td class="ind-cell">เงินมัดจำ/เงินประกัน</td><td class="note-col"></td><td class="num">${fv(N(d.deposit))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.deposit))}</td>`:''}</tr>`:''}
-        <tr class="subtotal"><td>รวมสินทรัพย์หมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.currentAssets)}</td>${prevYr?`<td class="num">${fv(prevBS?.currentAssets)}</td>`:''}</tr>
+        <tr><td class="ind-cell">เงินสดและรายการเทียบเท่าเงินสด</td><td class="note-col" style="text-align:center">4</td><td class="num">${fv(bs.cash)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.cash)}</td>`:''}</tr>
+        ${(N(d.ar)||N(prevBase?.ar))?`<tr><td class="ind-cell">ลูกหนี้การค้าและลูกหนี้อื่น</td><td class="note-col"></td><td class="num">${fv(N(d.ar))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.ar))}</td>`:''}</tr>`:''}
+        ${(N(d.loanAr)||N(prevBase?.loanAr))?`<tr><td class="ind-cell">ลูกหนี้เงินกู้</td><td class="note-col"></td><td class="num">${fv(N(d.loanAr))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.loanAr))}</td>`:''}</tr>`:''}
+        ${(N(d.inventory)||N(prevBase?.inventory))?`<tr><td class="ind-cell">สินค้าคงเหลือ</td><td class="note-col"></td><td class="num">${fv(N(d.inventory))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.inventory))}</td>`:''}</tr>`:''}
+        ${(N(d.oca)||N(prevBase?.oca))?`<tr><td class="ind-cell">สินทรัพย์หมุนเวียนอื่น</td><td class="note-col"></td><td class="num">${fv(N(d.oca))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.oca))}</td>`:''}</tr>`:''}
+        ${(N(d.deposit)||N(prevBase?.deposit))?`<tr><td class="ind-cell">เงินมัดจำ/เงินประกัน</td><td class="note-col"></td><td class="num">${fv(N(d.deposit))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.deposit))}</td>`:''}</tr>`:''}
+        <tr class="subtotal"><td>รวมสินทรัพย์หมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.currentAssets)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.currentAssets)}</td>`:''}</tr>
 
         <tr class="sec-hdr"><td colspan="${cols}">สินทรัพย์ไม่หมุนเวียน</td></tr>
-        ${(N(d.ppe)||N(prevBase?.ppe))?`<tr><td class="ind-cell">ที่ดิน อาคารและอุปกรณ์-สุทธิ</td><td class="note-col" style="text-align:center">3,5</td><td class="num">${fv(N(d.ppe))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.ppe))}</td>`:''}</tr>`:''}
-        ${(N(d.intangible)||N(prevBase?.intangible))?`<tr><td class="ind-cell">สินทรัพย์ไม่มีตัวตน</td><td class="note-col"></td><td class="num">${fv(N(d.intangible))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.intangible))}</td>`:''}</tr>`:''}
-        <tr class="subtotal"><td>รวมสินทรัพย์ไม่หมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.nonCurrentAssets)}</td>${prevYr?`<td class="num">${fv(prevBS?.nonCurrentAssets)}</td>`:''}</tr>
-        <tr class="grand-total"><td>รวมสินทรัพย์</td><td class="note-col"></td><td class="num">${fv(bs.totalAssets)}</td>${prevYr?`<td class="num">${fv(prevBS?.totalAssets)}</td>`:''}</tr>
+        ${(N(d.ppe)||N(prevBase?.ppe))?`<tr><td class="ind-cell">ที่ดิน อาคารและอุปกรณ์-สุทธิ</td><td class="note-col" style="text-align:center">3,5</td><td class="num">${fv(N(d.ppe))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.ppe))}</td>`:''}</tr>`:''}
+        ${(N(d.intangible)||N(prevBase?.intangible))?`<tr><td class="ind-cell">สินทรัพย์ไม่มีตัวตน</td><td class="note-col"></td><td class="num">${fv(N(d.intangible))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.intangible))}</td>`:''}</tr>`:''}
+        <tr class="subtotal"><td>รวมสินทรัพย์ไม่หมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.nonCurrentAssets)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.nonCurrentAssets)}</td>`:''}</tr>
+        <tr class="grand-total"><td>รวมสินทรัพย์</td><td class="note-col"></td><td class="num">${fv(bs.totalAssets)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.totalAssets)}</td>`:''}</tr>
 
         <!-- LIABILITIES -->
         <tr class="sec-hdr"><td colspan="${cols}">หนี้สินหมุนเวียน</td></tr>
-        ${(N(d.ap)||N(prevBase?.ap))?`<tr><td class="ind-cell">เจ้าหนี้การค้าและเจ้าหนี้อื่น</td><td class="note-col"></td><td class="num">${fv(N(d.ap))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.ap))}</td>`:''}</tr>`:''}
-        ${(N(d.shortLoan)||N(prevBase?.shortLoan))?`<tr><td class="ind-cell">เงินกู้ยืมระยะสั้น</td><td class="note-col"></td><td class="num">${fv(N(d.shortLoan))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.shortLoan))}</td>`:''}</tr>`:''}
-        ${(N(d.longLoan)||N(prevBase?.longLoan))?`<tr><td class="ind-cell">เงินกู้ยืมระยะยาว — ส่วนถึงกำหนด 1 ปี</td><td class="note-col"></td><td class="num">${fv(N(d.longLoan))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.longLoan))}</td>`:''}</tr>`:''}
-        ${(N(d.taxPay)||N(prevBase?.taxPay))?`<tr><td class="ind-cell">ภาษีเงินได้นิติบุคคลค้างจ่าย</td><td class="note-col"></td><td class="num">${fv(N(d.taxPay))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.taxPay))}</td>`:''}</tr>`:''}
-        ${(N(d.ocl)||N(prevBase?.ocl))?`<tr><td class="ind-cell">หนี้สินหมุนเวียนอื่น</td><td class="note-col" style="text-align:center">6</td><td class="num">${fv(N(d.ocl))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.ocl))}</td>`:''}</tr>`:''}
-        <tr class="subtotal"><td>รวมหนี้สินหมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.currentLiab)}</td>${prevYr?`<td class="num">${fv(prevBS?.currentLiab)}</td>`:''}</tr>
+        ${(N(d.ap)||N(prevBase?.ap))?`<tr><td class="ind-cell">เจ้าหนี้การค้าและเจ้าหนี้อื่น</td><td class="note-col"></td><td class="num">${fv(N(d.ap))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.ap))}</td>`:''}</tr>`:''}
+        ${(N(d.shortLoan)||N(prevBase?.shortLoan))?`<tr><td class="ind-cell">เงินกู้ยืมระยะสั้น</td><td class="note-col"></td><td class="num">${fv(N(d.shortLoan))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.shortLoan))}</td>`:''}</tr>`:''}
+        ${(N(d.longLoan)||N(prevBase?.longLoan))?`<tr><td class="ind-cell">เงินกู้ยืมระยะยาว — ส่วนถึงกำหนด 1 ปี</td><td class="note-col"></td><td class="num">${fv(N(d.longLoan))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.longLoan))}</td>`:''}</tr>`:''}
+        ${(N(d.taxPay)||N(prevBase?.taxPay))?`<tr><td class="ind-cell">ภาษีเงินได้นิติบุคคลค้างจ่าย</td><td class="note-col"></td><td class="num">${fv(N(d.taxPay))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.taxPay))}</td>`:''}</tr>`:''}
+        ${(N(d.ocl)||N(prevBase?.ocl))?`<tr><td class="ind-cell">หนี้สินหมุนเวียนอื่น</td><td class="note-col" style="text-align:center">6</td><td class="num">${fv(N(d.ocl))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.ocl))}</td>`:''}</tr>`:''}
+        <tr class="subtotal"><td>รวมหนี้สินหมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.currentLiab)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.currentLiab)}</td>`:''}</tr>
 
         <tr class="sec-hdr"><td colspan="${cols}">หนี้สินไม่หมุนเวียน</td></tr>
-        ${(N(d.longLoanNC)||N(prevBase?.longLoanNC))?`<tr><td class="ind-cell">เงินกู้ยืมระยะยาว</td><td class="note-col"></td><td class="num">${fv(N(d.longLoanNC))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.longLoanNC))}</td>`:''}</tr>`:''}
-        ${(N(d.directorLoan)||N(prevBase?.directorLoan))?`<tr><td class="ind-cell">เงินกู้กรรมการ/ผู้ถือหุ้น</td><td class="note-col"></td><td class="num">${fv(N(d.directorLoan))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.directorLoan))}</td>`:''}</tr>`:''}
-        <tr class="subtotal"><td>รวมหนี้สินไม่หมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.nonCurrentLiab)}</td>${prevYr?`<td class="num">${fv(prevBS?.nonCurrentLiab)}</td>`:''}</tr>
-        <tr class="subtotal"><td>รวมหนี้สิน</td><td class="note-col"></td><td class="num">${fv(bs.totalLiab)}</td>${prevYr?`<td class="num">${fv(prevBS?.totalLiab)}</td>`:''}</tr>
+        ${(N(d.longLoanNC)||N(prevBase?.longLoanNC))?`<tr><td class="ind-cell">เงินกู้ยืมระยะยาว</td><td class="note-col"></td><td class="num">${fv(N(d.longLoanNC))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.longLoanNC))}</td>`:''}</tr>`:''}
+        ${(N(d.directorLoan)||N(prevBase?.directorLoan))?`<tr><td class="ind-cell">เงินกู้กรรมการ/ผู้ถือหุ้น</td><td class="note-col"></td><td class="num">${fv(N(d.directorLoan))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.directorLoan))}</td>`:''}</tr>`:''}
+        <tr class="subtotal"><td>รวมหนี้สินไม่หมุนเวียน</td><td class="note-col"></td><td class="num">${fv(bs.nonCurrentLiab)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.nonCurrentLiab)}</td>`:''}</tr>
+        <tr class="subtotal"><td>รวมหนี้สิน</td><td class="note-col"></td><td class="num">${fv(bs.totalLiab)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.totalLiab)}</td>`:''}</tr>
 
         <!-- EQUITY -->
         <tr class="sec-hdr"><td colspan="${cols}">ส่วนของผู้ถือหุ้น</td></tr>
-        <tr><td>ทุนเรือนหุ้น</td><td class="note-col"></td><td class="num"></td>${prevYr?`<td class="num"></td>`:''}</tr>
-        <tr><td class="ind-cell">ทุนจดทะเบียน</td><td class="note-col"></td><td class="num"></td>${prevYr?`<td class="num"></td>`:''}</tr>
-        <tr><td style="padding-left:36pt">หุ้นสามัญ ${co?.sharesText||'10,000 หุ้น มูลค่าหุ้นละ 100 บาท'}</td><td class="note-col"></td><td class="num">${fv(N(d.capital))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.capital))}</td>`:''}</tr>
-        <tr><td class="ind-cell">ทุนที่ออกและเรียกชำระแล้ว</td><td class="note-col"></td><td class="num"></td>${prevYr?`<td class="num"></td>`:''}</tr>
-        <tr><td style="padding-left:36pt">หุ้นสามัญ ${co?.sharesText||'10,000 หุ้น มูลค่าหุ้นละ 100 บาท'}</td><td class="note-col"></td><td class="num">${fv(N(d.capital))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.capital))}</td>`:''}</tr>
-        <tr><td class="ind-cell">กำไร (ขาดทุน)สะสม</td><td class="note-col"></td><td class="num">${fv(bs.reEnd)}</td>${prevYr?`<td class="num">${fv(prevBS?.reEnd)}</td>`:''}</tr>
-        <tr class="subtotal"><td>รวมส่วนของผู้ถือหุ้น</td><td class="note-col"></td><td class="num">${fv(bs.totalEquity)}</td>${prevYr?`<td class="num">${fv(prevBS?.totalEquity)}</td>`:''}</tr>
-        <tr class="grand-total"><td>รวมหนี้สินและส่วนของผู้ถือหุ้น</td><td class="note-col"></td><td class="num">${fv(bs.totalLiabEq)}</td>${prevYr?`<td class="num">${fv(prevBS?.totalLiabEq)}</td>`:''}</tr>
+        <tr><td>ทุนเรือนหุ้น</td><td class="note-col"></td><td class="num"></td>${effectivePrevYr?`<td class="num"></td>`:''}</tr>
+        <tr><td class="ind-cell">ทุนจดทะเบียน</td><td class="note-col"></td><td class="num"></td>${effectivePrevYr?`<td class="num"></td>`:''}</tr>
+        <tr><td style="padding-left:36pt">หุ้นสามัญ ${co?.sharesText||'10,000 หุ้น มูลค่าหุ้นละ 100 บาท'}</td><td class="note-col"></td><td class="num">${fv(N(d.capital))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.capital))}</td>`:''}</tr>
+        <tr><td class="ind-cell">ทุนที่ออกและเรียกชำระแล้ว</td><td class="note-col"></td><td class="num"></td>${effectivePrevYr?`<td class="num"></td>`:''}</tr>
+        <tr><td style="padding-left:36pt">หุ้นสามัญ ${co?.sharesText||'10,000 หุ้น มูลค่าหุ้นละ 100 บาท'}</td><td class="note-col"></td><td class="num">${fv(N(d.capital))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.capital))}</td>`:''}</tr>
+        <tr><td class="ind-cell">กำไร (ขาดทุน)สะสม</td><td class="note-col"></td><td class="num">${fv(bs.reEnd)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.reEnd)}</td>`:''}</tr>
+        <tr class="subtotal"><td>รวมส่วนของผู้ถือหุ้น</td><td class="note-col"></td><td class="num">${fv(bs.totalEquity)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.totalEquity)}</td>`:''}</tr>
+        <tr class="grand-total"><td>รวมหนี้สินและส่วนของผู้ถือหุ้น</td><td class="note-col"></td><td class="num">${fv(bs.totalLiabEq)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.totalLiabEq)}</td>`:''}</tr>
       </tbody>
     </table>
 
@@ -4610,7 +4724,7 @@ function _doExportPDF(co,yd){
     <div class="hdr-block">
       <div class="co-name">${cn}</div>
       <div class="stmt-title">งบแสดงการเปลี่ยนแปลงในส่วนของผู้ถือหุ้น</div>
-      <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}${prevYr?' และ '+prevYr:''}</div>
+      <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}${effectivePrevYr?' และ '+effectivePrevYr:''}</div>
     </div>
     <div class="unit">หน่วย : บาท</div>
 
@@ -4624,13 +4738,13 @@ function _doExportPDF(co,yd){
         </tr>
       </thead>
       <tbody>
-        ${prevYr?`
-        <tr><td>ยอดคงเหลือ ณ 1 มกราคม ${prevYr}</td>
+        ${effectivePrevYr?`
+        <tr><td>ยอดคงเหลือ ณ 1 มกราคม ${effectivePrevYr}</td>
           <td class="num">${fv(prevCapital)}</td>
           <td class="num">${fv(prevPrevRE)}</td>
           <td class="num">${fv(prevCapital+prevPrevRE)}</td></tr>
         <tr><td class="ind-cell">กำไรสุทธิ</td><td class="num">0.00</td><td class="num">${fv(prevNetIncome)}</td><td class="num">${fv(prevNetIncome)}</td></tr>
-        <tr class="subtotal"><td>ยอดคงเหลือ ณ 31 ธันวาคม ${prevYr}</td>
+        <tr class="subtotal"><td>ยอดคงเหลือ ณ 31 ธันวาคม ${effectivePrevYr}</td>
           <td class="num">${fv(prevCapital)}</td>
           <td class="num">${fv(prevCloseRE)}</td>
           <td class="num">${fv(prevCloseTotal)}</td></tr>
@@ -4660,7 +4774,7 @@ function _doExportPDF(co,yd){
     <div class="hdr-block">
       <div class="co-name">${cn}</div>
       <div class="stmt-title">หมายเหตุประกอบงบการเงิน</div>
-      <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}${prevYr?' และ '+prevYr:''}</div>
+      <div class="stmt-sub">สำหรับปีสิ้นสุดวันที่ 31 ธันวาคม ${yr}${effectivePrevYr?' และ '+effectivePrevYr:''}</div>
     </div>
 
     <!-- Note 1 -->
@@ -4696,13 +4810,13 @@ function _doExportPDF(co,yd){
       <thead><tr>
         <th style="text-align:left;border-bottom:1px solid #000;padding:2pt 6pt"></th>
         <th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${yr}</th>
-        ${prevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${prevYr}</th>`:''}
+        ${effectivePrevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${effectivePrevYr}</th>`:''}
       </tr></thead>
       <tbody>
-        ${(N(bd.cashOnHand)||N(prevBD.cashOnHand)||bs.cash>0)?`<tr><td class="ind-cell">เงินสด</td><td class="num">${fv(N(bd.cashOnHand)||0)}</td>${prevYr?`<td class="num">${fv(N(prevBD.cashOnHand)||0)}</td>`:''}</tr>`:''}
-        ${(N(bd.cashAtBank)||N(prevBD.cashAtBank)||bs.cash>0)?`<tr><td class="ind-cell">เงินฝากธนาคาร</td><td class="num">${fv(N(bd.cashAtBank)||0)}</td>${prevYr?`<td class="num">${fv(N(prevBD.cashAtBank)||0)}</td>`:''}</tr>`:''}
-        ${N(bd.cashFixed)||N(prevBD.cashFixed)?`<tr><td class="ind-cell">เงินฝากประจำ</td><td class="num">${fv(N(bd.cashFixed))}</td>${prevYr?`<td class="num">${fv(N(prevBD.cashFixed))}</td>`:''}</tr>`:''}
-        <tr class="grand-total"><td>รวม</td><td class="num">${fv(bs.cash)}</td>${prevYr?`<td class="num">${fv(prevBS?.cash)}</td>`:''}</tr>
+        ${(N(bd.cashOnHand)||N(prevBD.cashOnHand)||bs.cash>0)?`<tr><td class="ind-cell">เงินสด</td><td class="num">${fv(N(bd.cashOnHand)||0)}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBD.cashOnHand)||0)}</td>`:''}</tr>`:''}
+        ${(N(bd.cashAtBank)||N(prevBD.cashAtBank)||bs.cash>0)?`<tr><td class="ind-cell">เงินฝากธนาคาร</td><td class="num">${fv(N(bd.cashAtBank)||0)}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBD.cashAtBank)||0)}</td>`:''}</tr>`:''}
+        ${N(bd.cashFixed)||N(prevBD.cashFixed)?`<tr><td class="ind-cell">เงินฝากประจำ</td><td class="num">${fv(N(bd.cashFixed))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBD.cashFixed))}</td>`:''}</tr>`:''}
+        <tr class="grand-total"><td>รวม</td><td class="num">${fv(bs.cash)}</td>${effectivePrevYr?`<td class="num">${fv(prevBS?.cash)}</td>`:''}</tr>
       </tbody>
     </table>
 
@@ -4730,11 +4844,11 @@ function _doExportPDF(co,yd){
       <thead><tr>
         <th style="text-align:left;border-bottom:1px solid #000;padding:2pt 6pt"></th>
         <th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${yr}</th>
-        ${prevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${prevYr}</th>`:''}
+        ${effectivePrevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${effectivePrevYr}</th>`:''}
       </tr></thead>
       <tbody>
         ${oclRows}
-        <tr class="grand-total"><td>รวม</td><td class="num">${fv(N(d.ocl))}</td>${prevYr?`<td class="num">${fv(N(prevBase?.ocl))}</td>`:''}</tr>
+        <tr class="grand-total"><td>รวม</td><td class="num">${fv(N(d.ocl))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBase?.ocl))}</td>`:''}</tr>
       </tbody>
     </table>`:''}
 
@@ -4745,11 +4859,11 @@ function _doExportPDF(co,yd){
       <thead><tr>
         <th style="text-align:left;border-bottom:1px solid #000;padding:2pt 6pt"></th>
         <th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${yr}</th>
-        ${prevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${prevYr}</th>`:''}
+        ${effectivePrevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${effectivePrevYr}</th>`:''}
       </tr></thead>
       <tbody>
         ${adminRows}
-        <tr class="grand-total"><td>รวม</td><td class="num">${fv(adminTotal||N(d.admin))}</td>${prevYr?`<td class="num">${fv(adminPrevTotal||N(prevBase?.admin))}</td>`:''}</tr>
+        <tr class="grand-total"><td>รวม</td><td class="num">${fv(adminTotal||N(d.admin))}</td>${effectivePrevYr?`<td class="num">${fv(adminPrevTotal||N(prevBase?.admin))}</td>`:''}</tr>
       </tbody>
     </table>`:''}
 
@@ -4759,26 +4873,26 @@ function _doExportPDF(co,yd){
       <thead><tr>
         <th style="text-align:left;border-bottom:1px solid #000;padding:2pt 6pt"></th>
         <th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${yr}</th>
-        ${prevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${prevYr}</th>`:''}
+        ${effectivePrevYr?`<th class="num" style="border-bottom:1px solid #000;padding:2pt 6pt;font-weight:700;text-align:right">${effectivePrevYr}</th>`:''}
       </tr></thead>
       <tbody>
-        <tr><td>กำไร (ขาดทุน)สุทธิตามบัญชี</td><td class="num">${fv(N(pd.taxAccountingProfit)||pl.netIncome)}</td>${prevYr?`<td class="num">${fv(prevPL?.netIncome||0)}</td>`:''}</tr>
-        ${N(pd.taxAddBack)?`<tr><td class="ind-cell">บวก รายจ่ายต้องห้าม</td><td class="num">${fv(N(pd.taxAddBack))}</td>${prevYr?`<td class="num">${fv(N(prevPD.taxAddBack))}</td>`:''}</tr>`:''}
+        <tr><td>กำไร (ขาดทุน)สุทธิตามบัญชี</td><td class="num">${fv(N(pd.taxAccountingProfit)||pl.netIncome)}</td>${effectivePrevYr?`<td class="num">${fv(prevPL?.netIncome||0)}</td>`:''}</tr>
+        ${N(pd.taxAddBack)?`<tr><td class="ind-cell">บวก รายจ่ายต้องห้าม</td><td class="num">${fv(N(pd.taxAddBack))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevPD.taxAddBack))}</td>`:''}</tr>`:''}
         <tr><td>กำไรก่อนหักขาดทุนสุทธิที่มีสิทธินำมาหักตามกฎหมาย</td>
           <td class="num">${fv((N(pd.taxAccountingProfit)||pl.netIncome)+N(pd.taxAddBack))}</td>
-          ${prevYr?`<td class="num">${fv((prevPL?.netIncome||0)+N(prevPD.taxAddBack))}</td>`:''}</tr>
-        ${N(pd.taxLossCarryforward)?`<tr><td class="ind-cell">หัก ขาดทุนสุทธิที่มีสิทธินำมาหักตามกฎหมาย</td><td class="num">${fv(-N(pd.taxLossCarryforward))}</td>${prevYr?`<td class="num">${fv(-N(prevPD.taxLossCarryforward))}</td>`:''}</tr>`:''}
+          ${effectivePrevYr?`<td class="num">${fv((prevPL?.netIncome||0)+N(prevPD.taxAddBack))}</td>`:''}</tr>
+        ${N(pd.taxLossCarryforward)?`<tr><td class="ind-cell">หัก ขาดทุนสุทธิที่มีสิทธินำมาหักตามกฎหมาย</td><td class="num">${fv(-N(pd.taxLossCarryforward))}</td>${effectivePrevYr?`<td class="num">${fv(-N(prevPD.taxLossCarryforward))}</td>`:''}</tr>`:''}
         <tr><td>กำไรก่อนคำนวณภาษีเงินได้นิติบุคคล</td>
           <td class="num">${fv(N(pd.taxableIncome)||(pl.netIncome+N(pd.taxAddBack)-N(pd.taxLossCarryforward)))}</td>
-          ${prevYr?`<td class="num">${fv(N(prevPD.taxableIncome)||((prevPL?.netIncome||0)+N(prevPD.taxAddBack)-N(prevPD.taxLossCarryforward)))}</td>`:''}</tr>
-        <tr><td class="ind-cell">คูณ อัตราภาษีเงินได้นิติบุคคล</td><td class="num"></td>${prevYr?`<td class="num"></td>`:''}</tr>
-        <tr><td style="padding-left:36pt">0 - 300,000 ยกเว้น</td><td class="num"></td>${prevYr?`<td class="num"></td>`:''}</tr>
-        <tr><td style="padding-left:36pt">300,001 - 3,000,000 &nbsp; 15%</td><td class="num">0.00</td>${prevYr?`<td class="num">0.00</td>`:''}</tr>
-        <tr><td style="padding-left:36pt">3,000,000 ขึ้นไป &nbsp; 20%</td><td class="num">0.00</td>${prevYr?`<td class="num">0.00</td>`:''}</tr>
-        <tr class="subtotal"><td>ภาษีเงินได้นิติบุคคล</td><td class="num">${fv(pl.tax)}</td>${prevYr?`<td class="num">${fv(prevPL?.tax||0)}</td>`:''}</tr>
-        ${N(pd.taxWHTPaid)?`<tr><td class="ind-cell">หัก ภาษีเงินได้ถูกหัก ณ ที่จ่าย</td><td class="num">${fv(-N(pd.taxWHTPaid))}</td>${prevYr?`<td class="num">-</td>`:''}</tr>`:''}
-        <tr><td class="ind-cell">ภาษีเงินได้นิติบุคคลจ่ายล่วงหน้า</td><td class="num">0.00</td>${prevYr?`<td class="num">0.00</td>`:''}</tr>
-        <tr class="grand-total"><td>ภาษีเงินได้นิติบุคคลค้างจ่าย</td><td class="num">0.00</td>${prevYr?`<td class="num">0.00</td>`:''}</tr>
+          ${effectivePrevYr?`<td class="num">${fv(N(prevPD.taxableIncome)||((prevPL?.netIncome||0)+N(prevPD.taxAddBack)-N(prevPD.taxLossCarryforward)))}</td>`:''}</tr>
+        <tr><td class="ind-cell">คูณ อัตราภาษีเงินได้นิติบุคคล</td><td class="num"></td>${effectivePrevYr?`<td class="num"></td>`:''}</tr>
+        <tr><td style="padding-left:36pt">0 - 300,000 ยกเว้น</td><td class="num"></td>${effectivePrevYr?`<td class="num"></td>`:''}</tr>
+        <tr><td style="padding-left:36pt">300,001 - 3,000,000 &nbsp; 15%</td><td class="num">0.00</td>${effectivePrevYr?`<td class="num">0.00</td>`:''}</tr>
+        <tr><td style="padding-left:36pt">3,000,000 ขึ้นไป &nbsp; 20%</td><td class="num">0.00</td>${effectivePrevYr?`<td class="num">0.00</td>`:''}</tr>
+        <tr class="subtotal"><td>ภาษีเงินได้นิติบุคคล</td><td class="num">${fv(pl.tax)}</td>${effectivePrevYr?`<td class="num">${fv(prevPL?.tax||0)}</td>`:''}</tr>
+        ${N(pd.taxWHTPaid)?`<tr><td class="ind-cell">หัก ภาษีเงินได้ถูกหัก ณ ที่จ่าย</td><td class="num">${fv(-N(pd.taxWHTPaid))}</td>${effectivePrevYr?`<td class="num">-</td>`:''}</tr>`:''}
+        <tr><td class="ind-cell">ภาษีเงินได้นิติบุคคลจ่ายล่วงหน้า</td><td class="num">0.00</td>${effectivePrevYr?`<td class="num">0.00</td>`:''}</tr>
+        <tr class="grand-total"><td>ภาษีเงินได้นิติบุคคลค้างจ่าย</td><td class="num">0.00</td>${effectivePrevYr?`<td class="num">0.00</td>`:''}</tr>
       </tbody>
     </table>
 
