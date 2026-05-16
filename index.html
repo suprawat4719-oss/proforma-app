@@ -4386,34 +4386,28 @@ function _doExportPDF(co,yd){
   const pl=res.pl; const bs=res.bs;
   const d=res.d;
 
-  // ---- Determine previous year data ----
-  // Priority 1: a separate year entry in the system
-  // Priority 2: prevYearData stored directly on this year (entered manually in Base Tab)
-  const prevYr=getPrevYear(S.currentCo,S.currentYear);
-  let prevPL=null,prevBS=null,prevBase=null,prevFD=null,resolvedPrevYr=null;
-  if(effectivePrevYr){
-    const pyd=getYearData(S.currentCo,effectivePrevYr);
+  // Resolve previous year - Priority 1: separate year in system, Priority 2: manually entered prevYearData
+  let prevPL=null,prevBS=null,prevBase=null,prevFD=null,effectivePrevYr=null;
+  const sysPrevYr=getPrevYear(S.currentCo,S.currentYear);
+  if(sysPrevYr){
+    const pyd=getYearData(S.currentCo,sysPrevYr);
     if(pyd){
       const pb=Object.assign(defaultBase(),pyd.base||pyd.draft||{});
       const pr=computeBase(pb);
       prevPL=pr.pl;prevBS=pr.bs;prevBase=pb;
       prevFD=Object.assign(defaultFullData(),pyd.fullData||{});
-      resolvedPrevYr=effectivePrevYr;
+      effectivePrevYr=sysPrevYr;
     }
   }
-  // Fallback: use manually-entered prevYearData
   if(!prevBase && yd.prevYearData){
     const pb=Object.assign(defaultBase(),yd.prevYearData);
-    // Check if any value is non-zero (user actually entered data)
-    const hasData=Object.values(pb).some(v=>Number(v)!==0);
-    if(hasData){
+    if(Object.values(pb).some(v=>Number(v)!==0)){
       const pr=computeBase(pb);
       prevPL=pr.pl;prevBS=pr.bs;prevBase=pb;
       prevFD=null;
-      resolvedPrevYr=String(parseInt(S.currentYear)-1);
+      effectivePrevYr=String(parseInt(S.currentYear)-1);
     }
   }
-  const effectivePrevYr=resolvedPrevYr;
 
   const cfInput=Object.assign(defaultCF(),yd.cf||{});
   const cfRes=computeCF(base,draft,settings,cfInput,res);
@@ -4424,8 +4418,6 @@ function _doExportPDF(co,yd){
   const yr=S.currentYear;const cn=co?.name||'บริษัท';
   const director=co?.director||'...................................';
   const N=v=>Number(v)||0;
-
-  // Format number: parentheses for negative, dash for zero
   const fv=v=>{
     if(v===0||v===null||v===undefined||v==='')return'-';
     const a=Math.abs(v);
@@ -4433,93 +4425,8 @@ function _doExportPDF(co,yd){
     return v<0?`(${s})`:s;
   };
   const pyr=effectivePrevYr||'';
-  const cols=effectivePrevYr?4:3;
-
-  // Signature block HTML
-  const signBlock=`<div class="sign-area"><div class="sign-box"><div class="sign-line"></div><p>…………………………………………..กรรมการ</p><p>(${director})</p></div></div>`;
-
-  // Admin expense fields (same order as PDF template)
-  const adminFields=[
-    ['adminSalaries','เงินเดือนพนักงาน'],
-    ['adminUtilities','ค่าโทรศัพท์ ค่าไฟฟ้า ค่าน้ำประปา'],
-    ['adminPostage','ค่าไปรณีย์อากร'],
-    ['adminSupplies','ค่าวัสดุสิ้นเปลือง'],
-    ['adminInternet','ค่าบริการอินเตอร์เน็ต'],
-    ['adminOfficeExp','ค่าใช้จ่ายในสำนักงาน'],
-    ['adminStationery','ค่าเครื่องเขียนแบบพิมพ์'],
-    ['adminRepairs','ค่าซ่อมแซมและบำรุงรักษา'],
-    ['adminRent','ค่าเช่าสำนักงานและโกดัง'],
-    ['adminWorkersComp','กองทุนเงินทดแทน'],
-    ['adminSocialSec','ค่าประกันสังคม'],
-    ['adminWelfare','ค่าสวัสดิการพนักงาน'],
-    ['adminDep','ค่าเสื่อมราคา-อุปกรณ์สำนักงาน'],
-    ['adminProfFees','ค่าตรวจสอบบัญชีและปรึกษากฎหมาย'],
-    ['adminAccFee','ค่าทำบัญชี'],
-    ['adminDonation','ค่าบริจาคการกุศล'],
-    ['adminTransport','ค่าใช้จ่ายเดินทางและที่พัก'],
-    ['adminFood','ค่าอาหารและเครื่องดื่ม'],
-    ['adminOther','ค่าใช้จ่ายเบ็ดเตล็ด'],
-    ['adminTaxNA','ค่าภาษีซื้อไม่ขอคืน'],
-    ['adminBankFee','ค่าธรรมเนียมธนาคาร'],
-    ['adminFineExp','ค่าใช้จ่ายต้องห้าม'],
-    ['adminVehicle','ค่าใช้จ่ายยานพาหนะ'],
-    ['adminOtherFee','ค่าธรรมเนียมอื่น'],
-    ['adminAdvertising','ค่าโฆษณาประชาสัมพันธ์'],
-    ['adminProvidentFund','กองทุนสำรองเลี้ยงชีพ'],
-    ['adminBadDebt','หนี้สูญ/ค่าเผื่อหนี้สงสัยจะสูญ'],
-    ['adminInsurance','ค่าประกันภัย'],
-  ];
-  const adminTotal=adminFields.reduce((s,[f])=>s+N(pd[f]),0);
-  const adminPrevTotal=adminFields.reduce((s,[f])=>s+N(prevPD[f]),0);
-  const hasAdminRows=adminFields.some(([f])=>N(pd[f])!==0||N(prevPD[f])!==0);
-  const adminRows=adminFields
-    .filter(([f])=>N(pd[f])!==0||N(prevPD[f])!==0)
-    .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(pd[f]))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevPD[f]))}</td>`:''}</tr>`)
-    .join('');
-
-  // OCL detail fields
-  const oclFields=[
-    ['whtPayable','ค่าภาษีหัก ณ ที่จ่ายค้างจ่าย'],
-    ['outputVAT','ภาษีขาย'],
-    ['vatPayable','ค่าภาษีมูลค่าเพิ่ม'],
-    ['accruedSalaries','เงินเดือนค้างจ่าย'],
-    ['accruedExpenses','ค่าใช้จ่ายค้างจ่ายอื่น'],
-    ['advanceReceipts','รายได้รับล่วงหน้า'],
-    ['otherAccrued','หนี้สินหมุนเวียนอื่น'],
-  ];
-  const hasOclRows=oclFields.some(([f])=>N(bd[f])!==0||N(prevBD[f])!==0);
-  const oclRows=oclFields
-    .filter(([f])=>N(bd[f])!==0||N(prevBD[f])!==0)
-    .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(bd[f]))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBD[f]))}</td>`:''}</tr>`)
-    .join('');
-
-  // Cash detail
-  const hasCashDetail=N(bd.cashOnHand)||N(bd.cashAtBank)||N(bd.cashFixed)||N(prevBD.cashOnHand)||N(prevBD.cashAtBank)||N(prevBD.cashFixed);
-  const cashRows=[
-    ['cashOnHand','เงินสด'],['cashAtBank','เงินฝากธนาคาร'],['cashFixed','เงินฝากประจำ']
-  ].filter(([f])=>N(bd[f])||N(prevBD[f]))
-   .map(([f,lbl])=>`<tr><td class="ind-cell">${lbl}</td><td class="num">${fv(N(bd[f]))}</td>${effectivePrevYr?`<td class="num">${fv(N(prevBD[f]))}</td>`:''}</tr>`)
-   .join('');
-
-  // PPE detail rows (note 5 — keeps same format as original)
-  const ppeRows=(bd.ppeDetail||[]).map(r=>`<tr><td class="ind-cell">${r.name||''}</td><td class="num">${fv(N(r.cost))}</td><td class="num">${r.accDep?`(${Math.abs(N(r.accDep)).toLocaleString('th-TH',{minimumFractionDigits:2})})`:'–'}</td><td class="num">${fv(N(r.cost)-N(r.accDep))}</td><td class="num">${N(r.depRate)?N(r.depRate)+'%':'–'}</td><td class="num">${fv(N(r.depYear))}</td></tr>`).join('');
-
-  // Equity changes — 2 years continuous like the PDF template
-  // prevYear values
-  const prevCapital=N(prevBase?.capital)||N(d.capital);
-  const prevYearOpenRE=effectivePrevYr?(N(eq.openRE)||N(base.reBegin)||(N(prevBase?.reBegin))):0;
-  // year before prev (opening of prev year)
-  const prevPrevRE=effectivePrevYr?(N(prevBase?.reBegin)||0):0;
-  const prevNetIncome=prevPL?.netIncome||0;
-  const prevCloseRE=effectivePrevYr?(prevPrevRE+prevNetIncome):0;
-  const prevCloseTotal=effectivePrevYr?(prevCapital+prevCloseRE):0;
-
-  const curOpenCapital=N(d.capital);
-  const curOpenRE=effectivePrevYr?prevCloseRE:(N(eq.openRE)||N(base.reBegin)||0);
-  const curOpenTotal=curOpenCapital+curOpenRE;
-
-  // Approval meeting text
-  const approvalMeeting=pd.approvalMeeting||`งบการเงินนี้ได้รับอนุมัติจากที่ประชุมสามัญผู้ถือหุ้นครั้งที่ 1/${yr+543} เมื่อวันที่ 30 เมษายน ${yr+543}`;
+  const prevYr=effectivePrevYr;
+  const cols=prevYr?4:3;
 
   const html=`<!DOCTYPE html><html lang="th"><head>
   <meta charset="UTF-8">
