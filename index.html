@@ -2912,63 +2912,65 @@ function syncFullDataToFinancials(yd){
   const eq=fd.equityChanges||{};
   if(!yd.base)yd.base=defaultBase();
 
+  const hasValue=v=>v!==undefined&&v!==null&&String(v).trim()!=='';
+  const hasAnyField=(obj,fields)=>fields.some(f=>hasValue(obj[f]));
+
   // 1. Cash: sum of detail components → base.cash
-  const cashSum=n(bd.cashOnHand)+n(bd.cashAtBank)+n(bd.cashFixed);
-  if(cashSum>0)yd.base.cash=cashSum;
+  const cashFields=['cashOnHand','cashAtBank','cashFixed'];
+  const cashSum=cashFields.reduce((s,f)=>s+n(bd[f]),0);
+  if(hasAnyField(bd,cashFields))yd.base.cash=cashSum;
 
   // 2. Admin expense: prefer adminLines (from PDF) sum; fallback to fixed fields
   const adminLinesArr=pd.adminLines||[];
   const adminLinesSum=adminLinesArr.reduce((s,r)=>s+n(r.amount),0);
-  const adminFixedSum=n(pd.adminSalaries)+n(pd.adminSocialSec)+n(pd.adminWorkersComp)+
-    n(pd.adminProvidentFund)+n(pd.adminWelfare)+n(pd.adminDep)+n(pd.adminUtilities)+
-    n(pd.adminInternet)+n(pd.adminRent)+n(pd.adminPostage)+n(pd.adminSupplies)+
-    n(pd.adminStationery)+n(pd.adminOfficeExp)+n(pd.adminRepairs)+n(pd.adminVehicle)+
-    n(pd.adminTransport)+n(pd.adminFood)+n(pd.adminProfFees)+n(pd.adminAdvertising)+
-    n(pd.adminDonation)+n(pd.adminBankFee)+n(pd.adminOtherFee)+n(pd.adminTaxNA)+
-    n(pd.adminFineExp)+n(pd.adminBadDebt)+n(pd.adminInsurance)+n(pd.adminOther);
-  const adminSum=adminLinesSum>0?adminLinesSum:adminFixedSum;
-  if(adminSum>0)yd.base.admin=adminSum;
+  const adminFixedFields=['adminSalaries','adminSocialSec','adminWorkersComp','adminProvidentFund','adminWelfare','adminDep','adminUtilities','adminInternet','adminRent','adminPostage','adminSupplies','adminStationery','adminOfficeExp','adminRepairs','adminVehicle','adminTransport','adminFood','adminProfFees','adminAdvertising','adminDonation','adminBankFee','adminOtherFee','adminTaxNA','adminFineExp','adminBadDebt','adminInsurance','adminOther'];
+  const adminFixedSum=adminFixedFields.reduce((s,f)=>s+n(pd[f]),0);
+  if(adminLinesArr.length>0||hasAnyField(pd,adminFixedFields)){
+    yd.base.admin=adminLinesSum||adminFixedSum;
+  }
 
   // 2b. Selling expenses → base.sellingExp
-  if(n(pd.sellingExpenses)>0)yd.base.sellingExp=n(pd.sellingExpenses);
+  if(hasValue(pd.sellingExpenses))yd.base.sellingExp=n(pd.sellingExpenses);
 
   // 3. PPE net: sum net book from ppeDetail → base.ppe
   const ppeRows=bd.ppeDetail||[];
   if(ppeRows.length>0){
     const ppeNet=ppeRows.reduce((s,r)=>s+n(r.cost)-n(r.accDep),0);
-    if(ppeNet>0)yd.base.ppe=ppeNet;
+    yd.base.ppe=ppeNet;
     // Also push depYear total → base.depExp if not already set
     const depYearSum=ppeRows.reduce((s,r)=>s+n(r.depYear),0);
-    if(depYearSum>0&&n(yd.base.depExp)===0)yd.base.depExp=depYearSum;
+    if(hasValue(depYearSum)&&n(yd.base.depExp)===0)yd.base.depExp=depYearSum;
   }
 
-  // 4. Tax: currentTax → base.tax
-  const totalTax=n(pd.currentTax)+n(pd.deferredTax);
-  if(totalTax>0)yd.base.tax=totalTax;
+  // 4. Tax: currentTax + deferredTax → base.tax
+  const taxFields=['currentTax','deferredTax'];
+  const totalTax=taxFields.reduce((s,f)=>s+n(pd[f]),0);
+  if(hasAnyField(pd,taxFields))yd.base.tax=totalTax;
 
   // 5. Equity opening → base.capital / base.reBegin
-  if(n(eq.openCapital)>0)yd.base.capital=n(eq.openCapital);
-  if(n(eq.openRE)!==0)yd.base.reBegin=n(eq.openRE);
+  if(hasValue(eq.openCapital))yd.base.capital=n(eq.openCapital);
+  if(hasValue(eq.openRE))yd.base.reBegin=n(eq.openRE);
 
   // 6. Equity closing → netIncome (for validation)
-  if(n(eq.netIncome)>0&&n(yd.base.netIncome)===0)yd.base.netIncome=n(eq.netIncome);
+  if(hasValue(eq.netIncome)&&n(yd.base.netIncome)===0)yd.base.netIncome=n(eq.netIncome);
 
   // 7. Trade AR net → base.ar
-  const arNet=n(bd.tradeARGross)-n(bd.tradeARAllowance);
-  if(arNet>0)yd.base.ar=arNet;
+  if(hasValue(bd.tradeARGross)||hasValue(bd.tradeARAllowance)){
+    yd.base.ar=n(bd.tradeARGross)-n(bd.tradeARAllowance);
+  }
 
-  // 8. WHT receivable + VAT receivable → base.oca (if base.oca is 0)
-  const extraOCA=n(bd.whtReceivable)+n(bd.vatReceivable)+n(bd.advancePayments)+n(bd.prepaid);
-  if(extraOCA>0&&n(yd.base.oca)===0)yd.base.oca=extraOCA;
+  // 8. Detail current asset fields → base.oca / base.deposit / base.inventory
+  const ocaFields=['whtReceivable','vatReceivable','advancePayments','prepaid'];
+  const ocaSum=ocaFields.reduce((s,f)=>s+n(bd[f]),0);
+  if(hasAnyField(bd,ocaFields))yd.base.oca=ocaSum;
+  if(hasValue(bd.deposit))yd.base.deposit=n(bd.deposit);
+  if(hasValue(bd.longTermDeposit)&&n(yd.base.deposit)===0)yd.base.deposit=n(bd.longTermDeposit);
+  if(hasValue(bd.inventory))yd.base.inventory=n(bd.inventory);
 
   // 9. Extra current liabilities → base.ocl
-  const extraOCL=n(bd.outputVAT)+n(bd.whtPayable)+n(bd.vatPayable)+
-    n(bd.advanceReceipts)+n(bd.dividendsPayable)+n(bd.accruedSalaries)+
-    n(bd.accruedExpenses)+n(bd.otherAccrued);
-  if(extraOCL>0&&n(yd.base.ocl)===0)yd.base.ocl=extraOCL;
-
-  // 10. Provision for EOD → base.longLoanNC supplement (non-current)
-  // (keep separate — don't overwrite, just note)
+  const oclFields=['outputVAT','whtPayable','vatPayable','advanceReceipts','dividendsPayable','accruedSalaries','accruedExpenses','otherAccrued'];
+  const oclSum=oclFields.reduce((s,f)=>s+n(bd[f]),0);
+  if(hasAnyField(bd,oclFields))yd.base.ocl=oclSum;
 
   yd.updatedAt=Date.now();
   return yd;
@@ -4130,9 +4132,16 @@ function exportComparativeExcel(){
   const co=getCompany(S.currentCo);
   const yd=getYearData(S.currentCo,S.currentYear);
   if(!yd){toast('ไม่มีข้อมูล','err');return;}
-  const prevYr=getPrevYear(S.currentCo,S.currentYear);
+  let prevYr=getPrevYear(S.currentCo,S.currentYear);
+  let prevYd = prevYr ? getYearData(S.currentCo,prevYr) : null;
+  if(!prevYr && yd.prevYearData){
+    const manualPrev = Object.assign(defaultBase(), yd.prevYearData);
+    if(Object.values(manualPrev).some(v=>Number(v)!==0)){
+      prevYr = String(parseInt(S.currentYear)-1);
+      prevYd = { base: manualPrev };
+    }
+  }
   if(!prevYr){toast('ไม่มีข้อมูลปีก่อนหน้า','warn');return;}
-  const prevYd=getYearData(S.currentCo,prevYr);
   const settings=Object.assign(defaultSettings(),yd.settings||{});
   const draft=Object.assign(defaultDraft(),yd.draft||{});
   const res=compute(draft,settings);
@@ -4374,7 +4383,7 @@ function exportPDF(){
   const yd=getYearData(S.currentCo,S.currentYear);
   if(!yd){toast('ไม่มีข้อมูล','err');return;}
   const checks=validateBeforeExport();
-  if(checks.some(c=>c.status!=='ok')){showValidationModal(()=>exportPDF());return;}
+  if(checks.some(c=>c.status!=='ok')){showValidationModal(()=>_doExportPDF(co,yd));return;}
   _doExportPDF(co,yd);
 }
 function _doExportPDF(co,yd){
